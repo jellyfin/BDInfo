@@ -4,8 +4,4 @@
     <TargetFramework>netcoreapp3.0</TargetFramework>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Discutils" Version="0.15.1-ci0002" />
-  </ItemGroup>
-
 </Project>
