@@ -17,17 +17,18 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //=============================================================================
 
+using BDInfo.IO;
+using Microsoft.WindowsAPICodePack.Dialogs;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Globalization;
-using System.Text;
 using System.Threading;
 using System.Windows.Forms;
-using Microsoft.WindowsAPICodePack.Dialogs;
+
+using DiscUtils.Udf;
 
 namespace BDInfo
 {
@@ -411,9 +412,6 @@ namespace BDInfo
             listViewStreamFiles.Items.Clear();
             listViewStreams.Items.Clear();
 
-            if (BDROM != null && BDROM.IsImage && BDROM.CdReader != null)
-                BDROM.CloseDiscImage();
-
             InitBDROMWorker = new BackgroundWorker();
             InitBDROMWorker.WorkerReportsProgress = true;
             InitBDROMWorker.WorkerSupportsCancellation = true;
@@ -427,9 +425,21 @@ namespace BDInfo
             object sender, 
             DoWorkEventArgs e)
         {
+            System.IO.Stream fileStream = null;
             try
             {
-                BDROM = new BDROM((string)e.Argument);
+                IFileInfo pathInfo = FileInfo.FromFullName((string)e.Argument);
+                BDROM = null;
+                if (pathInfo.IsDir)
+                {
+                    BDROM = new BDROM(DirectoryInfo.FromDirectoryName(pathInfo.FullName));
+                }
+                else
+                {
+                    fileStream = System.IO.File.OpenRead(pathInfo.FullName);
+                    UdfReader cdReader = new UdfReader(fileStream);
+                    BDROM = new BDROM(DiscDirectoryInfo.FromImage(cdReader, "BDMV"));
+                }
                 BDROM.StreamClipFileScanError += new BDROM.OnStreamClipFileScanError(BDROM_StreamClipFileScanError);
                 BDROM.StreamFileScanError += new BDROM.OnStreamFileScanError(BDROM_StreamFileScanError);
                 BDROM.PlaylistFileScanError += new BDROM.OnPlaylistFileScanError(BDROM_PlaylistFileScanError);
@@ -439,6 +449,13 @@ namespace BDInfo
             catch (Exception ex)
             {
                 e.Result = ex;
+            }
+            finally
+            {
+                if (fileStream != null)
+                {
+                    fileStream.Close();
+                }
             }
         }
 
@@ -522,24 +539,12 @@ namespace BDInfo
                                                     Environment.NewLine);
             }
 
-            if (!BDROM.IsImage)
-            {
-                textBoxSource.Text = BDROM.DirectoryRoot.FullName;
-                textBoxDetails.Text += string.Format(CultureInfo.InvariantCulture,
-                                                    "Detected BDMV Folder: {0} (Disc Label: {1}){2}",
-                                                    BDROM.DirectoryBDMV.FullName,
-                                                    BDROM.VolumeLabel,
-                                                    Environment.NewLine);
-            }
-            else
-            {
-                textBoxDetails.Text += string.Format(CultureInfo.InvariantCulture, 
-                                                    "Detected BDMV Folder: {0} (Disc Label: {1}){3}ISO Image: {2}{3}",
-                                                    BDROM.DiscDirectoryBDMV.FullName,
-                                                    BDROM.VolumeLabel,
-                                                    textBoxSource.Text,
-                                                    Environment.NewLine);
-            }
+            textBoxSource.Text = BDROM.DirectoryRoot.FullName;
+            textBoxDetails.Text += string.Format(CultureInfo.InvariantCulture,
+                                                "Detected BDMV Folder: {0} (Disc Label: {1}){2}",
+                                                BDROM.DirectoryBDMV.FullName,
+                                                BDROM.VolumeLabel,
+                                                Environment.NewLine);
 
             List<string> features = new List<string>();
             if (BDROM.IsUHD)
@@ -1101,15 +1106,11 @@ namespace BDInfo
                     {
                         if (streamFile.InterleavedFile.FileInfo != null)
                             scanState.TotalBytes += streamFile.InterleavedFile.FileInfo.Length;
-                        else
-                            scanState.TotalBytes += streamFile.InterleavedFile.DFileInfo.Length;
                     }
                     else
                     {
                         if (streamFile.FileInfo != null)
                             scanState.TotalBytes += streamFile.FileInfo.Length;
-                        else
-                            scanState.TotalBytes += streamFile.DFileInfo.Length;
                     }
                     
                     if (!scanState.PlaylistMap.ContainsKey(streamFile.Name))
@@ -1156,8 +1157,6 @@ namespace BDInfo
                     }
                     if (streamFile.FileInfo != null)
                         scanState.FinishedBytes += streamFile.FileInfo.Length;
-                    else
-                        scanState.FinishedBytes += streamFile.DFileInfo.Length;
                     if (scanState.Exception != null)
                     {
                         ScanResult.FileExceptions[streamFile.Name] = scanState.Exception;
