@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -148,7 +148,7 @@ namespace BDInfo
             }
 
             if (DirectorySNP != null &&
-                (DirectorySNP.GetFiles("*.mnv").Length > 0 || DirectorySNP.GetFiles("*.MNV").Length > 0))
+                (DirectorySNP.GetFiles(".mnv").Length > 0 || DirectorySNP.GetFiles(".MNV").Length > 0))
             {
                 IsPSP = true;
             }
@@ -179,10 +179,10 @@ namespace BDInfo
 
             if (DirectoryPLAYLIST != null)
             {
-                IFileInfo[] files = DirectoryPLAYLIST.GetFiles("*.mpls");
+                IFileInfo[] files = DirectoryPLAYLIST.GetFiles(".mpls");
                 if (files.Length == 0)
                 {
-                    files = DirectoryPLAYLIST.GetFiles("*.MPLS");
+                    files = DirectoryPLAYLIST.GetFiles(".MPLS");
                 }
                 foreach (IFileInfo file in files)
                 {
@@ -193,10 +193,10 @@ namespace BDInfo
 
             if (DirectorySTREAM != null)
             {
-                IFileInfo[] files = DirectorySTREAM.GetFiles("*.m2ts");
+                IFileInfo[] files = DirectorySTREAM.GetFiles(".m2ts");
                 if (files.Length == 0)
                 {
-                    files = DirectoryPLAYLIST.GetFiles("*.M2TS");
+                    files = DirectoryPLAYLIST.GetFiles(".M2TS");
                 }
                 foreach (IFileInfo file in files)
                 {
@@ -207,10 +207,10 @@ namespace BDInfo
 
             if (DirectoryCLIPINF != null)
             {
-                IFileInfo[] files = DirectoryCLIPINF.GetFiles("*.clpi");
+                IFileInfo[] files = DirectoryCLIPINF.GetFiles(".clpi");
                 if (files.Length == 0)
                 {
-                    files = DirectoryPLAYLIST.GetFiles("*.CLPI");
+                    files = DirectoryPLAYLIST.GetFiles(".CLPI");
                 }
                 foreach (IFileInfo file in files)
                 {
@@ -221,10 +221,10 @@ namespace BDInfo
 
             if (DirectorySSIF != null)
             {
-                IFileInfo[] files = DirectorySSIF.GetFiles("*.ssif");
+                IFileInfo[] files = DirectorySSIF.GetFiles(".ssif");
                 if (files.Length == 0)
                 {
-                    files = DirectorySSIF.GetFiles("*.SSIF");
+                    files = DirectorySSIF.GetFiles(".SSIF");
                 }
                 foreach (IFileInfo file in files)
                 {
