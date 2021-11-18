@@ -272,7 +272,8 @@ namespace BDInfo
                             break;
                         }
                     }
-                    else throw ex;
+
+                    throw;
                 }
             }
 
@@ -310,7 +311,8 @@ namespace BDInfo
                             break;
                         }
                     }
-                    else throw ex;
+
+                    throw;
                 }
             }
 
@@ -347,7 +349,8 @@ namespace BDInfo
                             break;
                         }
                     }
-                    else throw ex;
+
+                    throw;
                 }
             }
 
