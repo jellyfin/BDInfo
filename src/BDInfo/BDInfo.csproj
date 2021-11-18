@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.1</TargetFrameworks>
+    <Version>0.7.6.1</Version>
+    <Authors>UniqProject, cinemasquid, stanionascu, jellyfin</Authors>
+    <Description>Library for analysis of the Bluray disc and folder stuctures.</Description>
+    <AssemblyVersion>0.7.6.1</AssemblyVersion>
+    <FileVersion>0.7.6.1</FileVersion>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageProjectUrl>https://github.com/jellyfin/BDInfo</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/jellyfin/BDInfo</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>
