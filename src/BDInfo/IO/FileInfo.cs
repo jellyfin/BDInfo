@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.IO;
 
 namespace BDInfo.IO
 {
@@ -15,19 +13,19 @@ namespace BDInfo.IO
 
         public long Length => _impl.Length;
 
-        public bool IsDir => _impl.Attributes.HasFlag(System.IO.FileAttributes.Directory);
+        public bool IsDir => (_impl.Attributes & FileAttributes.Directory) == FileAttributes.Directory;
 
         public FileInfo(System.IO.FileInfo impl)
         {
             _impl = impl;
         }
 
-        public System.IO.Stream OpenRead()
+        public Stream OpenRead()
         {
             return _impl.OpenRead();
         }
 
-        public System.IO.StreamReader OpenText()
+        public StreamReader OpenText()
         {
             return _impl.OpenText();
         }

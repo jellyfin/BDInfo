@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -19,10 +19,6 @@
 
 #undef DEBUG
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace BDInfo
 {
     public abstract class TSCodecMPEG2
@@ -36,7 +32,7 @@ namespace BDInfo
             int pictureParse = 0;
             int sequenceHeaderParse = 0;
             int extensionParse = 0;
-            int sequenceExtensionParse = 0;            
+            int sequenceExtensionParse = 0;
 
             for (int i = 0; i < buffer.Length; i++)
             {
@@ -192,7 +188,7 @@ namespace BDInfo
 #if DEBUG
                     if (sequenceExtensionParse == 0)
                     {
-                        uint sequenceExtension = 
+                        uint sequenceExtension =
                             ((parse & 0x8) >> 3);
                         if (sequenceExtension == 0)
                         {

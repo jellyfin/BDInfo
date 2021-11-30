@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -34,7 +34,7 @@ namespace BDInfo
             for (var i = 0; i < buffer.Length; i++)
             {
                 sync = (sync << 8) + buffer.ReadByte();
-                if (sync == 0xF8726FBA) 
+                if (sync == 0xF8726FBA)
                 {
                     syncFound = true;
                     break;
@@ -60,7 +60,7 @@ namespace BDInfo
             int ratebits = buffer.ReadBits2(4);
             if (ratebits != 0xF)
             {
-                stream.SampleRate = 
+                stream.SampleRate =
                     (((ratebits & 8) > 0 ? 44100 : 48000) << (ratebits & 7));
             }
             buffer.BSSkipBits(15);

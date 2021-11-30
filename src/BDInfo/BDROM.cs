@@ -61,8 +61,6 @@ namespace BDInfo
         public Dictionary<string, TSInterleavedFile> InterleavedFiles =
             new Dictionary<string, TSInterleavedFile>();
 
-        private static List<string> ExcludeDirs = new List<string> { "ANY!", "AACS", "BDSVM", "ANYVM", "SLYVM" };
-
         public delegate bool OnStreamClipFileScanError(
             TSStreamClipFile streamClipFile, Exception ex);
 
@@ -113,7 +111,7 @@ namespace BDInfo
 
             for (int i = 0; i < indexFiles.Length; i++)
             {
-                if (indexFiles[i].Name.ToLower() == "index.bdmv")
+                if (string.Equals(indexFiles[i].Name, "index.bdmv", StringComparison.OrdinalIgnoreCase))
                 {
                     indexFile = indexFiles[i];
                     break;
@@ -251,7 +249,7 @@ namespace BDInfo
 
         public void Scan()
         {
-            List<TSStreamClipFile> errorStreamClipFiles = new List<TSStreamClipFile>();
+            List<TSStreamClipFile> errorStreamClipFiles = null;
             foreach (TSStreamClipFile streamClipFile in StreamClipFiles.Values)
             {
                 try
@@ -260,7 +258,7 @@ namespace BDInfo
                 }
                 catch (Exception ex)
                 {
-                    errorStreamClipFiles.Add(streamClipFile);
+                    (errorStreamClipFiles ??= new List<TSStreamClipFile>()).Add(streamClipFile);
                     if (StreamClipFileScanError != null)
                     {
                         if (StreamClipFileScanError(streamClipFile, ex))
@@ -290,7 +288,7 @@ namespace BDInfo
             StreamFiles.Values.CopyTo(streamFiles, 0);
             Array.Sort(streamFiles, CompareStreamFiles);
 
-            List<TSPlaylistFile> errorPlaylistFiles = new List<TSPlaylistFile>();
+            List<TSPlaylistFile> errorPlaylistFiles = null;
             foreach (TSPlaylistFile playlistFile in PlaylistFiles.Values)
             {
                 try
@@ -299,7 +297,7 @@ namespace BDInfo
                 }
                 catch (Exception ex)
                 {
-                    errorPlaylistFiles.Add(playlistFile);
+                    (errorPlaylistFiles ??= new List<TSPlaylistFile>()).Add(playlistFile);
                     if (PlaylistFileScanError != null)
                     {
                         if (PlaylistFileScanError(playlistFile, ex))
@@ -316,7 +314,7 @@ namespace BDInfo
                 }
             }
 
-            List<TSStreamFile> errorStreamFiles = new List<TSStreamFile>();
+            List<TSStreamFile> errorStreamFiles = null;
             foreach (TSStreamFile streamFile in streamFiles)
             {
                 try
@@ -337,7 +335,7 @@ namespace BDInfo
                 }
                 catch (Exception ex)
                 {
-                    errorStreamFiles.Add(streamFile);
+                    (errorStreamFiles ??= new List<TSStreamFile>()).Add(streamFile);
                     if (StreamFileScanError != null)
                     {
                         if (StreamFileScanError(streamFile, ex))
@@ -390,7 +388,7 @@ namespace BDInfo
 
             while (dir != null)
             {
-                if (dir.Name == "BDMV")
+                if (string.Equals(dir.Name, "BDMV", StringComparison.Ordinal))
                 {
                     return dir;
                 }
@@ -431,7 +429,7 @@ namespace BDInfo
             IFileInfo[] pathFiles = directoryInfo.GetFiles();
             foreach (IFileInfo pathFile in pathFiles)
             {
-                if (pathFile.Extension.ToUpper() == ".SSIF")
+                if (string.Equals(pathFile.Extension, ".SSIF", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
@@ -446,12 +444,12 @@ namespace BDInfo
             return size;
         }
 
-        private string GetVolumeLabel(IDirectoryInfo dir)
+        private static string GetVolumeLabel(IDirectoryInfo dir)
         {
             string label = "";
             uint serialNumber = 0;
             uint maxLength = 0;
-            uint volumeFlags = new uint();
+            uint volumeFlags = 0;
             StringBuilder volumeLabel = new StringBuilder(256);
             StringBuilder fileSystemName = new StringBuilder(256);
 
@@ -516,12 +514,12 @@ namespace BDInfo
 
         private void ReadIndexVersion(Stream indexStream)
         {
-            var buffer = new byte[8];
-            int count = indexStream.Read(buffer, 0, 8);
+            Span<byte> buffer = stackalloc byte[8];
+            int count = indexStream.Read(buffer);
             int pos = 0;
             if (count > 0)
             {
-                var indexVer = ToolBox.ReadString(buffer, count, ref pos);
+                var indexVer = ToolBox.ReadString(buffer, ref pos);
                 IsUHD = indexVer == "INDX0300";
             }
         }
