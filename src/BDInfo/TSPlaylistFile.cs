@@ -1050,6 +1050,7 @@ namespace BDInfo
             {
                 return 1;
             }
+
             int sortX = GetStreamTypeSortIndex(x.StreamType);
             int sortY = GetStreamTypeSortIndex(y.StreamType);
 
