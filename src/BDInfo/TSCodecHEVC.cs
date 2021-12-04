@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -80,7 +80,7 @@ namespace BDInfo
             public ushort DPBOutputDelayLengthMinus1;
 
             public XXLCommon(bool subPicHRDParamsPresentFlag, ushort duCPBRemovalDelayIncrementLengthMinus1,
-                             ushort dpbOutputDelayDULengthMinus1, ushort initialCPBRemovalDelayLengthMinus1, 
+                             ushort dpbOutputDelayDULengthMinus1, ushort initialCPBRemovalDelayLengthMinus1,
                              ushort auCPBRemovalDelayLengthMinus1, ushort dpbOutputDelayLengthMinus1)
             {
                 SubPicHRDParamsPresentFlag = subPicHRDParamsPresentFlag;
@@ -400,22 +400,22 @@ namespace BDInfo
         private static bool _generalInterlacedSourceFlag;
         private static bool _generalFrameOnlyConstraintFlag;
 
-        public static ExtendedDataSet ExtendedData;
+        public static ExtendedDataSet ExtendedData { get; private set; }
 
-        public static List<VideoParamSetStruct> VideoParamSets;
-        public static List<VUIParametersStruct> VUIParameterSets;
-        public static List<SeqParameterSetStruct> SeqParameterSets;
-        public static List<PicParameterSetStruct> PicParameterSets;
+        public static List<VideoParamSetStruct> VideoParamSets { get; private set; }
+        public static List<VUIParametersStruct> VUIParameterSets { get; private set; }
+        public static List<SeqParameterSetStruct> SeqParameterSets { get; private set; }
+        public static List<PicParameterSetStruct> PicParameterSets { get; private set; }
 
-        public static string MasteringDisplayColorPrimaries;
-        public static string MasteringDisplayLuminance;
-        public static uint MaximumContentLightLevel;
-        public static uint MaximumFrameAverageLightLevel;
+        public static string MasteringDisplayColorPrimaries { get; private set; }
+        public static string MasteringDisplayLuminance { get; private set; }
+        public static uint MaximumContentLightLevel { get; private set; }
+        public static uint MaximumFrameAverageLightLevel { get; private set; }
 
-        public static List<string> ExtendedFormatInfo;
-        public static bool LightLevelAvailable;
+        public static List<string> ExtendedFormatInfo { get; private set; }
+        public static bool LightLevelAvailable { get; private set; }
 
-        public static byte PreferredTransferCharacteristics;
+        public static byte PreferredTransferCharacteristics { get; private set; }
 
         public static void Scan(TSVideoStream stream, TSStreamBuffer buffer, ref string tag)
         {
@@ -513,7 +513,7 @@ namespace BDInfo
             ExtendedData.PicParameterSets = PicParameterSets;
 
             stream.ExtendedData = ExtendedData;
-            
+
             // TODO: profile to string
             if (SeqParameterSets.Count > 0)
             {
@@ -602,7 +602,7 @@ namespace BDInfo
                             {
                                 ExtendedFormatInfo.Add(TransferCharacteristics(seqParameterSet.VUIParameters.TransferCharacteristics));
                                 ExtendedFormatInfo.Add(MatrixCoefficients(seqParameterSet.VUIParameters.MatrixCoefficients));
-                                
+
                             }
                         }
                     }
@@ -777,7 +777,7 @@ namespace BDInfo
             SeqParameterSets[(int) spsSeqParameterSetID] = new SeqParameterSetStruct(vuiParametersItem,
                                                                                      _profileSpace,
                                                                                      _tierFlag,
-                                                                                     _profileIDC, 
+                                                                                     _profileIDC,
                                                                                      _levelIDC,
                                                                                      picWidthInLumaSamples,
                                                                                      picHeightInLumaSamples,
@@ -1018,7 +1018,7 @@ namespace BDInfo
                 return;
             }
 
-            if (seqParameterSetItem.VUIParameters?.FrameFieldInfoPresentFlag ?? 
+            if (seqParameterSetItem.VUIParameters?.FrameFieldInfoPresentFlag ??
                 (seqParameterSetItem.GeneralProgressiveSourceFlag && seqParameterSetItem.GeneralInterlacedSourceFlag))
             {
                 buffer.BSSkipBits(7); //pic_struct, source_scan_type, duplicate_flag
@@ -1067,7 +1067,7 @@ namespace BDInfo
             x[3] = buffer.ReadBits2(16);
             y[3] = buffer.ReadBits2(16);
 
-            
+
             max = buffer.ReadBits4(32);
 
             // TODO: Doublecheck workaround
@@ -1106,7 +1106,7 @@ namespace BDInfo
 
             MasteringDisplayColorPrimaries = string.Empty;
             bool humanReadablePrimaries = false;
-            if (x[G] == 15000 && x[B] == 7500 && x[R] == 32000 && x[3] == 15635 && 
+            if (x[G] == 15000 && x[B] == 7500 && x[R] == 32000 && x[3] == 15635 &&
                 y[G] == 30000 && y[B] == 3000 && y[R] == 16500 && y[3] == 16450)
             {
                 MasteringDisplayColorPrimaries = "BT.709";
@@ -1118,7 +1118,7 @@ namespace BDInfo
                 MasteringDisplayColorPrimaries = "BT.2020";
                 humanReadablePrimaries = true;
             }
-            else if (x[G] == 13250 && x[B] == 7500 && x[R] == 34000 && x[3] == 15635 && 
+            else if (x[G] == 13250 && x[B] == 7500 && x[R] == 34000 && x[3] == 15635 &&
                      y[G] == 34500 && y[B] == 3000 && y[R] == 16000 && y[3] == 16450)
             {
                 MasteringDisplayColorPrimaries = "Display P3";
@@ -1135,7 +1135,7 @@ namespace BDInfo
                                                            (double)x[3] / 50000, (double)y[3] / 50000);
 
             MasteringDisplayLuminance = string.Format(CultureInfo.InvariantCulture,
-                                                      "min: {0:0.0000} cd/m2, max: " + 
+                                                      "min: {0:0.0000} cd/m2, max: " +
                                                       ((max - ((int) max) == 0) ? "{1:0}" : "{1:0.0000}") +
                                                       " cd/m2",
                                                       (double) min / 10000, (double) max / 10000);
@@ -1221,7 +1221,7 @@ namespace BDInfo
                 buffer.SkipExpMulti(5);
             }
 
-            vuiParametersItem = new VUIParametersStruct(nal, vcl, xxlCommon, numUnitsInTick, timeScale, sarWidth, sarHeight, aspectRatioIDC, videoFormat, 
+            vuiParametersItem = new VUIParametersStruct(nal, vcl, xxlCommon, numUnitsInTick, timeScale, sarWidth, sarHeight, aspectRatioIDC, videoFormat,
                                                         videoFullRangeFlag, colourPrimaries, transferCharacteristics, matrixCoefficients, aspectRatioInfoPresentFlag,
                                                         videoSignalTypePresentFlag, frameFieldInfoPresentFlag, colourDescriptionPresentFlag, timingInfoPresentFlag);
         }

@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -114,7 +114,7 @@ namespace BDInfo
 
             _skipBits += 1;
             _stream.Seek(pos + (_skipBits >> 3), SeekOrigin.Begin);
-            _skipBits = _skipBits % 8;
+            _skipBits %= 8;
 
             return value;
         }
@@ -141,7 +141,7 @@ namespace BDInfo
             }
             _skipBits += bits;
             _stream.Seek(pos + (_skipBits >> 3), SeekOrigin.Begin);
-            _skipBits = _skipBits % 8;
+            _skipBits %= 8;
 
             return value;
         }
@@ -168,7 +168,7 @@ namespace BDInfo
             }
             _skipBits += bits;
             _stream.Seek(pos + (_skipBits >> 3), SeekOrigin.Begin);
-            _skipBits = _skipBits % 8;
+            _skipBits %= 8;
 
             return value;
         }
@@ -206,7 +206,7 @@ namespace BDInfo
 
             _skipBits += bits;
             _stream.Seek(pos + (_skipBits >> 3), SeekOrigin.Begin);
-            _skipBits = _skipBits % 8;
+            _skipBits %= 8;
 
             return value;
         }
@@ -218,7 +218,7 @@ namespace BDInfo
 
             _skipBits += bits;
             _stream.Seek(pos + (_skipBits >> 3), SeekOrigin.Begin);
-            _skipBits = _skipBits % 8;
+            _skipBits %= 8;
         }
 
         public void BSSkipNextByte()

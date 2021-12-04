@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -19,6 +19,7 @@
 
 #undef DEBUG
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -39,7 +40,7 @@ namespace BDInfo
         public TSStreamClipFile(IFileInfo fileInfo)
         {
             FileInfo = fileInfo;
-            Name = fileInfo.Name.ToUpper();
+            Name = fileInfo.Name.ToUpperInvariant();
         }
 
         public void Scan()
@@ -51,8 +52,8 @@ namespace BDInfo
             try
             {
 #if DEBUG
-                Debug.WriteLine(string.Format(
-                    "Scanning {0}...", Name));
+                Debug.WriteLine(
+                    string.Format(CultureInfo.InvariantCulture, "Scanning {0}...", Name));
 #endif
                 Streams.Clear();
 
@@ -68,7 +69,7 @@ namespace BDInfo
 
                 byte[] fileType = new byte[8];
                 Array.Copy(data, 0, fileType, 0, fileType.Length);
-                
+
                 FileType = ASCIIEncoding.ASCII.GetString(fileType);
                 if (FileType != "HDMV0100" &&
                     FileType != "HDMV0200" &&
@@ -78,21 +79,13 @@ namespace BDInfo
                         "Clip info file {0} has an unknown file type {1}.",
                         FileInfo.Name, FileType));
                 }
-#if DEBUG                
+#if DEBUG
                 Debug.WriteLine(string.Format(
                     "\tFileType: {0}", FileType));
 #endif
-                int clipIndex =
-                    ((int)data[12] << 24) +
-                    ((int)data[13] << 16) +
-                    ((int)data[14] << 8) +
-                    ((int)data[15]);
+                int clipIndex = BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(12));
 
-                int clipLength =
-                    ((int)data[clipIndex] << 24) +
-                    ((int)data[clipIndex + 1] << 16) +
-                    ((int)data[clipIndex + 2] << 8) +
-                    ((int)data[clipIndex + 3]);
+                int clipLength = BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(clipIndex));
 
                 byte[] clipData = new byte[clipLength];
                 Array.Copy(data, clipIndex + 4, clipData, 0, clipData.Length);
@@ -110,9 +103,9 @@ namespace BDInfo
                     TSStream stream = null;
 
                     ushort PID = (ushort)
-                        ((clipData[streamOffset] << 8) + 
+                        ((clipData[streamOffset] << 8) +
                           clipData[streamOffset + 1]);
-                    
+
                     streamOffset += 2;
 
                     TSStreamType streamType = (TSStreamType)
@@ -199,7 +192,7 @@ namespace BDInfo
                             Array.Copy(clipData, streamOffset + 2,
                                 languageBytes, 0, languageBytes.Length);
                             string languageCode =
-                                ASCIIEncoding.ASCII.GetString(languageBytes);
+                                Encoding.ASCII.GetString(languageBytes);
 
                             stream = new TSGraphicsStream();
                             stream.LanguageCode = languageCode;
@@ -241,7 +234,7 @@ namespace BDInfo
                     }
 
                     streamOffset += clipData[streamOffset] + 1;
-                }                
+                }
                 IsValid = true;
             }
             finally

@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -17,9 +17,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //=============================================================================
 
-using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Globalization;
 
 namespace BDInfo
 {
@@ -133,7 +131,7 @@ namespace BDInfo
                             }
                             else
                             {
-                                level = string.Format(
+                                level = string.Format(CultureInfo.InvariantCulture,
                                     "{0:D}.{1:D}",
                                     b / 10, (b - ((b / 10) * 10)));
                             }

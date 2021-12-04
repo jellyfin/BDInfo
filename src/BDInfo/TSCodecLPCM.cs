@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -18,8 +18,7 @@
 //=============================================================================
 
 using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Buffers.Binary;
 
 namespace BDInfo
 {
@@ -33,7 +32,7 @@ namespace BDInfo
             if (stream.IsInitialized) return;
 
             byte[] header = buffer.ReadBytes(4);
-            int flags = (header[2] << 8) + header[3];
+            int flags = BinaryPrimitives.ReadUInt16BigEndian(header.AsSpan(2));
 
             switch ((flags & 0xF000) >> 12)
             {

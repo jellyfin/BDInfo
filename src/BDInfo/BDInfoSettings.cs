@@ -1,7 +1,7 @@
-﻿
+
 namespace BDInfo
 {
-    public class BDInfoSettings
+    public static class BDInfoSettings
     {
         public static bool GenerateStreamDiagnostics => true;
 

@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -24,7 +24,7 @@ namespace BDInfo
     public abstract class TSCodecDTSHD
     {
         private static readonly int[] SampleRates = { 0x1F40, 0x3E80, 0x7D00, 0x0FA00, 0x1F400, 0x5622, 0x0AC44, 0x15888, 0x2B110, 0x56220, 0x2EE0, 0x5DC0, 0x0BB80, 0x17700, 0x2EE00, 0x5DC00 };
-        
+
         public static void Scan(TSAudioStream stream, TSStreamBuffer buffer, long bitrate, ref string tag)
         {
             if (stream.IsInitialized &&
@@ -115,7 +115,7 @@ namespace BDInfo
                 else
                 {
                     assetSizes[i] = buffer.ReadBits4(16) + 1;
-                }                
+                }
             }
             for (var i = 0; i < nuNumAssets; i++)
             {
@@ -163,7 +163,7 @@ namespace BDInfo
                     }
                     stream.SampleRate = SampleRates[nuMaxSampleRate];
                     stream.BitDepth = nuBitResolution;
-                    
+
                     stream.LFE = 0;
                     if ((nuSpkrActivityMask & 0x8) == 0x8)
                     {
@@ -244,7 +244,7 @@ namespace BDInfo
                     stream.IsInitialized = true;
                 }
                 stream.IsInitialized = (stream.BitRate > 0);
-            }            
+            }
         }
     }
 }

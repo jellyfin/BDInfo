@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -112,7 +112,7 @@ namespace BDInfo
 
         public TSDescriptor Clone()
         {
-            TSDescriptor descriptor = 
+            TSDescriptor descriptor =
                 new TSDescriptor(Name, (byte)Value.Length);
             Value.CopyTo(descriptor.Value, 0);
             return descriptor;
@@ -152,15 +152,15 @@ namespace BDInfo
         private string _LanguageCode;
         public string LanguageCode
         {
-            get 
+            get
             {
-                return _LanguageCode; 
+                return _LanguageCode;
             }
-            set 
+            set
             {
                 _LanguageCode = value;
                 LanguageName = LanguageCodes.GetName(value);
-            } 
+            }
         }
 
         public bool IsVideoStream
@@ -438,7 +438,7 @@ namespace BDInfo
         public virtual string Description => "";
 
         public abstract TSStream Clone();
-        
+
         protected void CopyTo(TSStream stream)
         {
             stream.PID = PID;
@@ -467,7 +467,7 @@ namespace BDInfo
 
         public int Width;
         public int Height;
-        public bool IsInterlaced;        
+        public bool IsInterlaced;
         public int FrameRateEnumerator;
         public int FrameRateDenominator;
         public TSAspectRatio AspectRatio;
@@ -637,7 +637,7 @@ namespace BDInfo
             stream.FrameRate = _FrameRate;
             stream.Width = Width;
             stream.Height = Height;
-            stream.IsInterlaced = IsInterlaced;        
+            stream.IsInterlaced = IsInterlaced;
             stream.FrameRateEnumerator = FrameRateEnumerator;
             stream.FrameRateDenominator = FrameRateDenominator;
             stream.AspectRatio = AspectRatio;

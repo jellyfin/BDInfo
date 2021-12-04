@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -24,7 +24,7 @@ namespace BDInfo
 {
     public abstract class TSCodecAC3
     {
-        private static readonly int[] AC3Bitrate = 
+        private static readonly int[] AC3Bitrate =
         {
              32,
              40,
@@ -47,7 +47,7 @@ namespace BDInfo
             640,
         };
 
-        private static readonly byte[] AC3Channels = {2, 1, 2, 3, 3, 4, 4, 5};
+        private static readonly byte[] AC3Channels = { 2, 1, 2, 3, 3, 4, 4, 5 };
 
         public static byte AC3ChanMap(int chanMap)
         {
@@ -55,7 +55,7 @@ namespace BDInfo
 
             for (byte i = 0; i < 16; i++)
             {
-                if ((chanMap & (1<<(15-i))) != 0)
+                if ((chanMap & (1 << (15 - i))) != 0)
                     switch (i)
                     {
                         case 5:
@@ -213,10 +213,10 @@ namespace BDInfo
                     if (buffer.ReadBool()) //channel remapping
                     {
                         uint chanmap = buffer.ReadBits4(16);
-                        
+
                         stream.ChannelCount = stream.CoreStream.ChannelCount;
-                        stream.ChannelCount += AC3ChanMap((int) chanmap);
-                        lfeOn = (uint) stream.CoreStream.LFE;
+                        stream.ChannelCount += AC3ChanMap((int)chanmap);
+                        lfeOn = (uint)stream.CoreStream.LFE;
                     }
                 }
 
@@ -254,7 +254,7 @@ namespace BDInfo
                             buffer.BSSkipBits(2); //skip 3 bits
 
                         var emdfPayloadID = buffer.ReadBits2(5);
-                        
+
                         if (emdfPayloadID > 0 && emdfPayloadID < 16)
                         {
                             if (emdfPayloadID == 0x1F)
@@ -342,15 +342,15 @@ namespace BDInfo
                     stream.BitRate += stream.CoreStream.BitRate;
             }
 
-            stream.LFE = (int) lfeOn;
+            stream.LFE = (int)lfeOn;
             if (stream.StreamType != TSStreamType.AC3_PLUS_SECONDARY_AUDIO)
             {
                 if ((stream.StreamType == TSStreamType.AC3_PLUS_AUDIO && bsid == 6) ||
                     (stream.StreamType == TSStreamType.AC3_AUDIO))
-                    stream.DialNorm = (int) dialNorm * -1;
+                    stream.DialNorm = (int)dialNorm * -1;
                 else if (stream.StreamType == TSStreamType.AC3_PLUS_AUDIO && secondFrame)
                 {
-                    stream.DialNorm = (int) dialNormExt * -1;
+                    stream.DialNorm = (int)dialNormExt * -1;
                 }
             }
             stream.IsVBR = false;

@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -31,7 +31,7 @@ namespace BDInfo
             var units = new[] { "B", "KB", "MB", "GB", "TB", "PB", "EB" };
 
             var digitGroups = (int)(Math.Log10(fSize) / Math.Log10(1024));
-            return string.Format(CultureInfo.InvariantCulture, "{0:N2} {1}", fSize/Math.Pow(1024, digitGroups), units[digitGroups]);
+            return string.Format(CultureInfo.InvariantCulture, "{0:N2} {1}", fSize / Math.Pow(1024, digitGroups), units[digitGroups]);
         }
 
         public static string ReadString(
@@ -39,11 +39,16 @@ namespace BDInfo
             int count,
             ref int pos)
         {
+            return ReadString(data.AsSpan(pos, count), ref pos);
+        }
+
+        public static string ReadString(
+            ReadOnlySpan<byte> data,
+            ref int pos)
+        {
             string val =
-                Encoding.ASCII.GetString(data, pos, count);
-
-            pos += count;
-
+                Encoding.ASCII.GetString(data);
+            pos += data.Length;
             return val;
         }
     }

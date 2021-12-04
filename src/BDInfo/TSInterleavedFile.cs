@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -25,8 +25,8 @@ namespace BDInfo
 {
     public class TSInterleavedFile
     {
-        public IFileInfo FileInfo = null;
-        public string Name = null;
+        public IFileInfo FileInfo { get; }
+        public string Name { get; }
 
         public TSInterleavedFile(IFileInfo fileInfo)
         {

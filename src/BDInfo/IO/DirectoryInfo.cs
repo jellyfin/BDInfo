@@ -1,12 +1,10 @@
-﻿using System;
-using System.IO;
-using System.Collections.Generic;
+using System;
 
 namespace BDInfo.IO
 {
     public class DirectoryInfo : IDirectoryInfo
     {
-        private System.IO.DirectoryInfo _impl = null;
+        private System.IO.DirectoryInfo _impl;
         public string Name => _impl.Name;
 
         public string FullName => _impl.FullName;

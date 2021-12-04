@@ -1,4 +1,4 @@
-﻿//============================================================================
+//============================================================================
 // BDInfo - Blu-ray Video and Audio Analysis Tool
 // Copyright © 2010 Cinema Squid
 //
@@ -16,10 +16,6 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //=============================================================================
-
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace BDInfo
 {
@@ -53,18 +49,18 @@ namespace BDInfo
                         {
                             if ((parse & 0x80000000) == 0)
                             {
-                                pictureType = 
+                                pictureType =
                                     (uint)((parse & 0x78000000) >> 13);
                             }
                             else
                             {
-                                pictureType = 
+                                pictureType =
                                     (uint)((parse & 0x3c000000) >> 12);
                             }
                         }
                         else
                         {
-                            pictureType = 
+                            pictureType =
                                 (uint)((parse & 0xf0000000) >> 14);
                         }
 
