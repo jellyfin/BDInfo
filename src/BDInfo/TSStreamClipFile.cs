@@ -35,7 +35,7 @@ namespace BDInfo
         public string Name = null;
 
         public Dictionary<ushort, TSStream> Streams =
-            new Dictionary<ushort,TSStream>();
+            new Dictionary<ushort, TSStream>();
 
         public TSStreamClipFile(IFileInfo fileInfo)
         {
@@ -121,18 +121,18 @@ namespace BDInfo
                         case TSStreamType.MPEG1_VIDEO:
                         case TSStreamType.MPEG2_VIDEO:
                         case TSStreamType.VC1_VIDEO:
-                        {
-                            TSVideoFormat videoFormat = (TSVideoFormat)
-                                (clipData[streamOffset + 2] >> 4);
-                            TSFrameRate frameRate = (TSFrameRate)
-                                (clipData[streamOffset + 2] & 0xF);
-                            TSAspectRatio aspectRatio = (TSAspectRatio)
-                                (clipData[streamOffset + 3] >> 4);
+                            {
+                                TSVideoFormat videoFormat = (TSVideoFormat)
+                                    (clipData[streamOffset + 2] >> 4);
+                                TSFrameRate frameRate = (TSFrameRate)
+                                    (clipData[streamOffset + 2] & 0xF);
+                                TSAspectRatio aspectRatio = (TSAspectRatio)
+                                    (clipData[streamOffset + 3] >> 4);
 
-                            stream = new TSVideoStream();
-                            ((TSVideoStream)stream).VideoFormat = videoFormat;
-                            ((TSVideoStream)stream).AspectRatio = aspectRatio;
-                            ((TSVideoStream)stream).FrameRate = frameRate;
+                                stream = new TSVideoStream();
+                                ((TSVideoStream)stream).VideoFormat = videoFormat;
+                                ((TSVideoStream)stream).AspectRatio = aspectRatio;
+                                ((TSVideoStream)stream).FrameRate = frameRate;
 #if DEBUG
                             Debug.WriteLine(string.Format(
                                 "\t{0} {1} {2} {3} {4}",
@@ -142,8 +142,8 @@ namespace BDInfo
                                 frameRate,
                                 aspectRatio));
 #endif
-                        }
-                        break;
+                            }
+                            break;
 
                         case TSStreamType.AC3_AUDIO:
                         case TSStreamType.AC3_PLUS_AUDIO:
@@ -156,23 +156,25 @@ namespace BDInfo
                         case TSStreamType.LPCM_AUDIO:
                         case TSStreamType.MPEG1_AUDIO:
                         case TSStreamType.MPEG2_AUDIO:
-                        {
-                            byte[] languageBytes = new byte[3];
-                            Array.Copy(clipData, streamOffset + 3,
-                                languageBytes, 0, languageBytes.Length);
-                            string languageCode =
-                                ASCIIEncoding.ASCII.GetString(languageBytes);
+                        case TSStreamType.MPEG2_AAC_AUDIO:
+                        case TSStreamType.MPEG4_AAC_AUDIO:
+                            {
+                                byte[] languageBytes = new byte[3];
+                                Array.Copy(clipData, streamOffset + 3,
+                                    languageBytes, 0, languageBytes.Length);
+                                string languageCode =
+                                    ASCIIEncoding.ASCII.GetString(languageBytes);
 
-                            TSChannelLayout channelLayout = (TSChannelLayout)
-                                (clipData[streamOffset + 2] >> 4);
-                            TSSampleRate sampleRate = (TSSampleRate)
-                                (clipData[streamOffset + 2] & 0xF);
+                                TSChannelLayout channelLayout = (TSChannelLayout)
+                                    (clipData[streamOffset + 2] >> 4);
+                                TSSampleRate sampleRate = (TSSampleRate)
+                                    (clipData[streamOffset + 2] & 0xF);
 
-                            stream = new TSAudioStream();
-                            ((TSAudioStream)stream).LanguageCode = languageCode;
-                            ((TSAudioStream)stream).ChannelLayout = channelLayout;
-                            ((TSAudioStream)stream).SampleRate = TSAudioStream.ConvertSampleRate(sampleRate);
-                            ((TSAudioStream)stream).LanguageCode = languageCode;
+                                stream = new TSAudioStream();
+                                ((TSAudioStream)stream).LanguageCode = languageCode;
+                                ((TSAudioStream)stream).ChannelLayout = channelLayout;
+                                ((TSAudioStream)stream).SampleRate = TSAudioStream.ConvertSampleRate(sampleRate);
+                                ((TSAudioStream)stream).LanguageCode = languageCode;
 #if DEBUG
                             Debug.WriteLine(string.Format(
                                 "\t{0} {1} {2} {3} {4}",
@@ -182,20 +184,20 @@ namespace BDInfo
                                 channelLayout,
                                 sampleRate));
 #endif
-                        }
-                        break;
+                            }
+                            break;
 
                         case TSStreamType.INTERACTIVE_GRAPHICS:
                         case TSStreamType.PRESENTATION_GRAPHICS:
-                        {
-                            byte[] languageBytes = new byte[3];
-                            Array.Copy(clipData, streamOffset + 2,
-                                languageBytes, 0, languageBytes.Length);
-                            string languageCode =
-                                Encoding.ASCII.GetString(languageBytes);
+                            {
+                                byte[] languageBytes = new byte[3];
+                                Array.Copy(clipData, streamOffset + 2,
+                                    languageBytes, 0, languageBytes.Length);
+                                string languageCode =
+                                    ASCIIEncoding.ASCII.GetString(languageBytes);
 
-                            stream = new TSGraphicsStream();
-                            stream.LanguageCode = languageCode;
+                                stream = new TSGraphicsStream();
+                                stream.LanguageCode = languageCode;
 #if DEBUG
                             Debug.WriteLine(string.Format(
                                 "\t{0} {1} {2}",
@@ -203,16 +205,16 @@ namespace BDInfo
                                 streamType,
                                 languageCode));
 #endif
-                        }
-                        break;
+                            }
+                            break;
 
                         case TSStreamType.SUBTITLE:
-                        {
-                            byte[] languageBytes = new byte[3];
-                            Array.Copy(clipData, streamOffset + 3,
-                                languageBytes, 0, languageBytes.Length);
-                            string languageCode =
-                                ASCIIEncoding.ASCII.GetString(languageBytes);
+                            {
+                                byte[] languageBytes = new byte[3];
+                                Array.Copy(clipData, streamOffset + 3,
+                                    languageBytes, 0, languageBytes.Length);
+                                string languageCode =
+                                    ASCIIEncoding.ASCII.GetString(languageBytes);
 #if DEBUG
                             Debug.WriteLine(string.Format(
                                 "\t{0} {1} {2}",
@@ -220,10 +222,10 @@ namespace BDInfo
                                 streamType,
                                 languageCode));
 #endif
-                            stream = new TSTextStream();
-                            stream.LanguageCode = languageCode;
-                        }
-                        break;
+                                stream = new TSTextStream();
+                                stream.LanguageCode = languageCode;
+                            }
+                            break;
                     }
 
                     if (stream != null)
@@ -239,8 +241,8 @@ namespace BDInfo
             }
             finally
             {
-                if (fileReader != null) fileReader.Close();
-                if (fileStream != null) fileStream.Close();
+                fileReader?.Close();
+                fileStream?.Close();
             }
         }
     }

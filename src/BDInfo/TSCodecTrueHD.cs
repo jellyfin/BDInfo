@@ -44,10 +44,7 @@ namespace BDInfo
             if (!syncFound)
             {
                 tag = "CORE";
-                if (stream.CoreStream == null)
-                {
-                    stream.CoreStream = new TSAudioStream {StreamType = TSStreamType.AC3_AUDIO};
-                }
+                stream.CoreStream ??= new TSAudioStream { StreamType = TSStreamType.AC3_AUDIO };
                 if (!stream.CoreStream.IsInitialized)
                 {
                     buffer.BeginRead();
@@ -61,7 +58,7 @@ namespace BDInfo
             if (ratebits != 0xF)
             {
                 stream.SampleRate =
-                    (((ratebits & 8) > 0 ? 44100 : 48000) << (ratebits & 7));
+                    ((ratebits & 8) > 0 ? 44100 : 48000) << (ratebits & 7);
             }
             buffer.BSSkipBits(15);
 
@@ -123,16 +120,16 @@ namespace BDInfo
             buffer.BSSkipBits(49);
 
             var peakBitrate = buffer.ReadBits4(15);
-            peakBitrate = (uint) ((peakBitrate * stream.SampleRate) >> 4);
+            peakBitrate = (uint)((peakBitrate * stream.SampleRate) >> 4);
 
-            var peakBitdepth =  (double)peakBitrate / (stream.ChannelCount + stream.LFE) / stream.SampleRate;
+            var peakBitdepth = (double)peakBitrate / (stream.ChannelCount + stream.LFE) / stream.SampleRate;
 
             stream.BitDepth = peakBitdepth > 14 ? 24 : 16;
 
             buffer.BSSkipBits(79);
 
             var hasExtensions = buffer.ReadBool();
-            int numExtensions = (buffer.ReadBits2(4)*2) + 1;
+            int numExtensions = (buffer.ReadBits2(4) * 2) + 1;
             var hasContent = Convert.ToBoolean(buffer.ReadBits4(4));
 
             if (hasExtensions)

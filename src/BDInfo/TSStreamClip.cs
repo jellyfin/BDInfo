@@ -31,6 +31,7 @@ namespace BDInfo
         public double RelativeTimeIn;
         public double RelativeTimeOut;
         public double Length;
+        public double RelativeLength;
 
         public ulong FileSize = 0;
         public ulong InterleavedFileSize = 0;
@@ -53,12 +54,12 @@ namespace BDInfo
                 StreamFile = streamFile;
 
                 if (StreamFile.FileInfo != null)
-                    FileSize = (ulong) StreamFile.FileInfo.Length;
+                    FileSize = (ulong)StreamFile.FileInfo.Length;
 
                 if (StreamFile.InterleavedFile != null)
                 {
                     if (StreamFile.InterleavedFile.FileInfo != null)
-                        InterleavedFileSize = (ulong) StreamFile.InterleavedFile.FileInfo.Length;
+                        InterleavedFileSize = (ulong)StreamFile.InterleavedFile.FileInfo.Length;
                 }
             }
             StreamClipFile = streamClipFile;
@@ -92,7 +93,7 @@ namespace BDInfo
             {
                 if (PacketSeconds > 0)
                 {
-                    return (ulong)Math.Round(((PacketSize * 8.0) / PacketSeconds));
+                    return (ulong)Math.Round(PacketSize * 8.0 / PacketSeconds);
                 }
                 return 0;
             }

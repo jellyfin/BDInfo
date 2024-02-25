@@ -17,8 +17,6 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //=============================================================================
 
-using System.IO;
-
 namespace BDInfo
 {
     public abstract class TSCodecDTSHD
@@ -47,10 +45,7 @@ namespace BDInfo
             if (!syncFound)
             {
                 tag = "CORE";
-                if (stream.CoreStream == null)
-                {
-                    stream.CoreStream = new TSAudioStream {StreamType = TSStreamType.DTS_AUDIO};
-                }
+                stream.CoreStream ??= new TSAudioStream { StreamType = TSStreamType.DTS_AUDIO };
                 if (!stream.CoreStream.IsInitialized)
                 {
                     buffer.BeginRead();
@@ -81,7 +76,7 @@ namespace BDInfo
                 var nuActiveExSsMask = new uint[nuNumAudioPresent];
                 for (var i = 0; i < nuNumAudioPresent; i++)
                 {
-                    nuActiveExSsMask[i] = buffer.ReadBits4((int) (nuSubStreamIndex + 1)); //?
+                    nuActiveExSsMask[i] = buffer.ReadBits4((int)(nuSubStreamIndex + 1)); // ?
                 }
                 for (var i = 0; i < nuNumAudioPresent; i++)
                 {
@@ -200,7 +195,7 @@ namespace BDInfo
                         {
                             temp3 = (temp3 << 8) + buffer.ReadByte();
 
-                            if (temp3 == 0x02000850) //DTS:X Pattern
+                            if (temp3 == 0x02000850) // DTS:X Pattern
                             {
                                 stream.HasExtensions = true;
                                 break;
@@ -215,7 +210,7 @@ namespace BDInfo
             // TODO
             if (stream.CoreStream != null)
             {
-                var coreStream = (TSAudioStream)stream.CoreStream;
+                var coreStream = stream.CoreStream;
                 if (coreStream.AudioMode == TSAudioMode.Extended &&
                     stream.ChannelCount == 5)
                 {
@@ -243,7 +238,7 @@ namespace BDInfo
                     stream.BitRate += stream.CoreStream.BitRate;
                     stream.IsInitialized = true;
                 }
-                stream.IsInitialized = (stream.BitRate > 0);
+                stream.IsInitialized = stream.BitRate > 0;
             }
         }
     }

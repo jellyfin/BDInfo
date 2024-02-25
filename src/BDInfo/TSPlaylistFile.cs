@@ -19,7 +19,6 @@
 
 #undef DEBUG
 using System;
-using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -39,7 +38,7 @@ namespace BDInfo
         public bool HasLoops = false;
         public bool IsCustom = false;
 
-         public bool MVCBaseViewR = false;
+        public bool MVCBaseViewR = false;
 
         public List<double> Chapters = new List<double>();
 
@@ -86,11 +85,13 @@ namespace BDInfo
             foreach (TSStreamClip clip in clips)
             {
                 TSStreamClip newClip = new TSStreamClip(
-                    clip.StreamFile, clip.StreamClipFile);
+                    clip.StreamFile, clip.StreamClipFile)
+                {
+                    Name = clip.Name,
+                    TimeIn = clip.TimeIn,
+                    TimeOut = clip.TimeOut
+                };
 
-                newClip.Name = clip.Name;
-                newClip.TimeIn = clip.TimeIn;
-                newClip.TimeOut = clip.TimeOut;
                 newClip.Length = newClip.TimeOut - newClip.TimeIn;
                 newClip.RelativeTimeIn = TotalLength;
                 newClip.RelativeTimeOut = newClip.RelativeTimeIn + newClip.Length;
@@ -204,7 +205,7 @@ namespace BDInfo
             {
                 if (TotalLength > 0)
                 {
-                    return (ulong)Math.Round((TotalSize * 8.0) / TotalLength);
+                    return (ulong)Math.Round(TotalSize * 8.0 / TotalLength);
                 }
                 return 0;
             }
@@ -216,7 +217,7 @@ namespace BDInfo
             {
                 if (TotalAngleLength > 0)
                 {
-                    return (ulong)Math.Round((TotalAngleSize * 8.0) / TotalAngleLength);
+                    return (ulong)Math.Round(TotalAngleSize * 8.0 / TotalAngleLength);
                 }
                 return 0;
             }
@@ -269,7 +270,7 @@ namespace BDInfo
 
                 // misc flags
                 pos = 0x38;
-                byte miscFlags = data[pos++];
+                byte miscFlags = ReadByte(data, ref pos);
 
                 // MVC_Base_view_R_flag is stored in 4th bit
                 MVCBaseViewR = (miscFlags & 0x10) != 0;
@@ -331,14 +332,17 @@ namespace BDInfo
                     double timeOut = (double)outTime / 45000;
 
                     TSStreamClip streamClip = new TSStreamClip(
-                        streamFile, streamClipFile);
+                        streamFile, streamClipFile)
+                    {
+                        Name = streamFileName, //TODO
+                        TimeIn = timeIn,
+                        TimeOut = timeOut
+                    };
 
-                    streamClip.Name = streamFileName; //TODO
-                    streamClip.TimeIn = timeIn;
-                    streamClip.TimeOut = timeOut;
                     streamClip.Length = streamClip.TimeOut - streamClip.TimeIn;
                     streamClip.RelativeTimeIn = TotalLength;
                     streamClip.RelativeTimeOut = streamClip.RelativeTimeIn + streamClip.Length;
+                    streamClip.RelativeLength = streamClip.Length / TotalLength;
                     StreamClips.Add(streamClip);
                     chapterClips.Add(streamClip);
 
@@ -382,13 +386,16 @@ namespace BDInfo
                             }
 
                             TSStreamClip angleClip =
-                                new TSStreamClip(angleFile, angleClipFile);
-                            angleClip.AngleIndex = angle + 1;
-                            angleClip.TimeIn = streamClip.TimeIn;
-                            angleClip.TimeOut = streamClip.TimeOut;
-                            angleClip.RelativeTimeIn = streamClip.RelativeTimeIn;
-                            angleClip.RelativeTimeOut = streamClip.RelativeTimeOut;
-                            angleClip.Length = streamClip.Length;
+                                new TSStreamClip(angleFile, angleClipFile)
+                                {
+                                    AngleIndex = angle + 1,
+                                    TimeIn = streamClip.TimeIn,
+                                    TimeOut = streamClip.TimeOut,
+                                    RelativeTimeIn = streamClip.RelativeTimeIn,
+                                    RelativeTimeOut = streamClip.RelativeTimeOut,
+                                    Length = streamClip.Length
+                                };
+
                             StreamClips.Add(angleClip);
                         }
                         if (angles - 1 > AngleCount) AngleCount = angles - 1;
@@ -407,47 +414,73 @@ namespace BDInfo
 
 #if DEBUG
                     Debug.WriteLine(string.Format(
+                        "{0} : {1} -> V:{2} A:{3} PG:{4} IG:{5} 2A:{6} 2V:{7} PIP:{8}", 
                         CultureInfo.InvariantCulture,
-                        "{0} : {1} -> V:{2} A:{3} PG:{4} IG:{5} 2A:{6} 2V:{7} PIP:{8}",
-                        Name, streamFileName, streamCountVideo, streamCountAudio, streamCountPG, streamCountIG,
+                        Name, streamFileName, streamCountVideo, streamCountAudio, streamCountPG, streamCountIG, 
                         streamCountSecondaryAudio, streamCountSecondaryVideo, streamCountPIP));
 #endif
 
                     for (int i = 0; i < streamCountVideo; i++)
                     {
                         TSStream stream = CreatePlaylistStream(data, ref pos);
-                        if (stream != null) PlaylistStreams[stream.PID] = stream;
+                        if (stream != null)
+                        {
+                            if (!PlaylistStreams.ContainsKey(stream.PID) || streamClip.RelativeLength > 0.01)
+                                PlaylistStreams[stream.PID] = stream;
+                        }
                     }
                     for (int i = 0; i < streamCountAudio; i++)
                     {
                         TSStream stream = CreatePlaylistStream(data, ref pos);
-                        if (stream != null) PlaylistStreams[stream.PID] = stream;
+                        if (stream != null)
+                        {
+                            if (!PlaylistStreams.ContainsKey(stream.PID) || streamClip.RelativeLength > 0.01)
+                                PlaylistStreams[stream.PID] = stream;
+                        }
                     }
                     for (int i = 0; i < streamCountPG; i++)
                     {
                         TSStream stream = CreatePlaylistStream(data, ref pos);
-                        if (stream != null) PlaylistStreams[stream.PID] = stream;
+                        if (stream != null)
+                        {
+                            if (!PlaylistStreams.ContainsKey(stream.PID) || streamClip.RelativeLength > 0.01)
+                                PlaylistStreams[stream.PID] = stream;
+                        }
                     }
                     for (int i = 0; i < streamCountIG; i++)
                     {
                         TSStream stream = CreatePlaylistStream(data, ref pos);
-                        if (stream != null) PlaylistStreams[stream.PID] = stream;
+                        if (stream != null)
+                        {
+                            if (!PlaylistStreams.ContainsKey(stream.PID) || streamClip.RelativeLength > 0.01)
+                                PlaylistStreams[stream.PID] = stream;
+                        }
                     }
                     for (int i = 0; i < streamCountSecondaryAudio; i++)
                     {
                         TSStream stream = CreatePlaylistStream(data, ref pos);
-                        if (stream != null) PlaylistStreams[stream.PID] = stream;
+                        if (stream != null)
+                        {
+                            if (!PlaylistStreams.ContainsKey(stream.PID) || streamClip.RelativeLength > 0.01)
+                                PlaylistStreams[stream.PID] = stream;
+                        }
+
                         pos += 2;
                     }
                     for (int i = 0; i < streamCountSecondaryVideo; i++)
                     {
                         TSStream stream = CreatePlaylistStream(data, ref pos);
-                        if (stream != null) PlaylistStreams[stream.PID] = stream;
+                        if (stream != null)
+                        {
+                            if (!PlaylistStreams.ContainsKey(stream.PID) || streamClip.RelativeLength > 0.01)
+                                PlaylistStreams[stream.PID] = stream;
+                        }
+
                         pos += 6;
                     }
                     /*
                      * TODO
-                     *
+                     * 
                     for (int i = 0; i < streamCountPIP; i++)
                     {
                         TSStream stream = CreatePlaylistStream(data, ref pos);
@@ -466,13 +499,18 @@ namespace BDInfo
                     chapterIndex < chapterCount;
                     chapterIndex++)
                 {
-                    int chapterType = data[pos+1];
+                    int chapterType = data[pos + 1];
 
                     if (chapterType == 1)
                     {
-                        int streamFileIndex = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(pos + 2));
+                        int streamFileIndex =
+                            (data[pos + 2] << 8) + data[pos + 3];
 
-                        uint chapterTime = BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(pos + 4));
+                        long chapterTime =
+                            ((long)data[pos + 4] << 24) +
+                            ((long)data[pos + 5] << 16) +
+                            ((long)data[pos + 6] << 8) +
+                            data[pos + 7];
 
                         TSStreamClip streamClip = chapterClips[streamFileIndex];
 
@@ -499,14 +537,8 @@ namespace BDInfo
             }
             finally
             {
-                if (fileReader != null)
-                {
-                    fileReader.Close();
-                }
-                if (fileStream != null)
-                {
-                    fileStream.Close();
-                }
+                fileReader?.Close();
+                fileStream?.Close();
             }
         }
 
@@ -610,7 +642,6 @@ namespace BDInfo
 
 #if DEBUG
                             Debug.WriteLine(string.Format(
-                                CultureInfo.InvariantCulture,
                                 "\t{0} {1} {2} {3} {4}",
                                 pid,
                                 streamType,
@@ -632,8 +663,10 @@ namespace BDInfo
                 case TSStreamType.LPCM_AUDIO:
                 case TSStreamType.MPEG1_AUDIO:
                 case TSStreamType.MPEG2_AUDIO:
+                case TSStreamType.MPEG2_AAC_AUDIO:
+                case TSStreamType.MPEG4_AAC_AUDIO:
 
-                    int audioFormat = data[pos++];
+                    int audioFormat = ReadByte(data, ref pos);
 
                     TSChannelLayout channelLayout = (TSChannelLayout)
                         (audioFormat >> 4);
@@ -649,7 +682,6 @@ namespace BDInfo
 
 #if DEBUG
                     Debug.WriteLine(string.Format(
-                        CultureInfo.InvariantCulture,
                         "\t{0} {1} {2} {3} {4}",
                         pid,
                         streamType,
@@ -674,7 +706,6 @@ namespace BDInfo
 
 #if DEBUG
                     Debug.WriteLine(string.Format(
-                        CultureInfo.InvariantCulture,
                         "\t{0} {1} {2}",
                         pid,
                         streamType,
@@ -685,7 +716,7 @@ namespace BDInfo
 
                 case TSStreamType.SUBTITLE:
 
-                    int code = data[pos++]; // TODO
+                    int code = ReadByte(data, ref pos); // TODO
                     string textLanguage = ToolBox.ReadString(data, 3, ref pos);
 
                     stream = new TSTextStream();
@@ -693,7 +724,6 @@ namespace BDInfo
 
 #if DEBUG
                     Debug.WriteLine(string.Format(
-                        CultureInfo.InvariantCulture,
                         "\t{0} {1} {2}",
                         pid,
                         streamType,
@@ -735,11 +765,14 @@ namespace BDInfo
             }
             foreach (TSStreamClip clip in StreamClips)
             {
-                if (clip.StreamClipFile.Streams.Count > referenceClip.StreamClipFile.Streams.Count)
+                if (referenceClip.StreamFile == null && clip.StreamFile != null)
+                    referenceClip = clip;
+
+                if (clip.StreamClipFile.Streams.Count > referenceClip.StreamClipFile.Streams.Count && clip.RelativeLength > 0.01)
                 {
                     referenceClip = clip;
                 }
-                else if (clip.Length > referenceClip.Length)
+                else if (clip.Length > referenceClip.Length && clip.StreamFile != null)
                 {
                     referenceClip = clip;
                 }
@@ -758,6 +791,8 @@ namespace BDInfo
                     }
                 }
             }
+
+            if (referenceClip == null) return;
 
             foreach (TSStream clipStream
                 in referenceClip.StreamClipFile.Streams.Values)
@@ -828,11 +863,11 @@ namespace BDInfo
                         {
                             ((TSVideoStream)stream).EncodingProfile =
                                 ((TSVideoStream)clipStream).EncodingProfile;
-                            ((TSVideoStream) stream).ExtendedData =
-                                ((TSVideoStream) clipStream).ExtendedData;
+                            ((TSVideoStream)stream).ExtendedData =
+                                ((TSVideoStream)clipStream).ExtendedData;
                         }
                         else if (stream.IsAudioStream &&
-                            clipStream.IsAudioStream)
+                                clipStream.IsAudioStream)
                         {
                             TSAudioStream audioStream = (TSAudioStream)stream;
                             TSAudioStream clipAudioStream = (TSAudioStream)clipStream;
@@ -865,12 +900,28 @@ namespace BDInfo
                             {
                                 audioStream.HasExtensions = clipAudioStream.HasExtensions;
                             }
+                            if (clipAudioStream.ExtendedData != audioStream.ExtendedData)
+                            {
+                                audioStream.ExtendedData = clipAudioStream.ExtendedData;
+                            }
                             if (clipAudioStream.CoreStream != null &&
                                 audioStream.CoreStream == null)
                             {
                                 audioStream.CoreStream = (TSAudioStream)
                                     clipAudioStream.CoreStream.Clone();
                             }
+                        }
+                        else if (stream.IsGraphicsStream &&
+                                clipStream.IsGraphicsStream)
+                        {
+                            TSGraphicsStream graphicsStream = (TSGraphicsStream)stream;
+                            TSGraphicsStream clipGraphicsStream = (TSGraphicsStream)clipStream;
+
+                            graphicsStream.Captions = clipGraphicsStream.Captions;
+                            graphicsStream.ForcedCaptions = clipGraphicsStream.ForcedCaptions;
+                            graphicsStream.Width = clipGraphicsStream.Width;
+                            graphicsStream.Height = clipGraphicsStream.Height;
+                            graphicsStream.CaptionIDs = clipGraphicsStream.CaptionIDs;
                         }
                     }
                 }
@@ -1041,55 +1092,56 @@ namespace BDInfo
             {
                 return 1;
             }
+            else
+            {
+                if (x.ChannelCount > y.ChannelCount)
+                {
+                    return -1;
+                }
+                else if (y.ChannelCount > x.ChannelCount)
+                {
+                    return 1;
+                }
+                else
+                {
+                    int sortX = GetStreamTypeSortIndex(x.StreamType);
+                    int sortY = GetStreamTypeSortIndex(y.StreamType);
 
-            if (x.ChannelCount > y.ChannelCount)
-            {
-                return -1;
+                    if (sortX > sortY)
+                    {
+                        return -1;
+                    }
+                    else if (sortY > sortX)
+                    {
+                        return 1;
+                    }
+                    else
+                    {
+                        if (x.LanguageCode == "eng")
+                        {
+                            return -1;
+                        }
+                        else if (y.LanguageCode == "eng")
+                        {
+                            return 1;
+                        }
+                        else if (x.LanguageCode != y.LanguageCode)
+                        {
+                            return string.Compare(
+                                x.LanguageName, y.LanguageName);
+                        }
+                        else if (x.PID < y.PID)
+                        {
+                            return -1;
+                        }
+                        else if (y.PID < x.PID)
+                        {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                }
             }
-            else if (y.ChannelCount > x.ChannelCount)
-            {
-                return 1;
-            }
-
-            int sortX = GetStreamTypeSortIndex(x.StreamType);
-            int sortY = GetStreamTypeSortIndex(y.StreamType);
-
-            if (sortX > sortY)
-            {
-                return -1;
-            }
-
-            if (sortY > sortX)
-            {
-                return 1;
-            }
-
-            if (string.Equals(x.LanguageCode, "eng", StringComparison.Ordinal))
-            {
-                return -1;
-            }
-            else if (string.Equals(y.LanguageCode, "eng", StringComparison.Ordinal))
-            {
-                return 1;
-            }
-
-            var strCmp = string.Compare(
-                    x.LanguageName, y.LanguageName, StringComparison.Ordinal);
-            if (strCmp != 0)
-            {
-                return strCmp;
-            }
-
-            if (x.PID < y.PID)
-            {
-                return -1;
-            }
-            else if (y.PID < x.PID)
-            {
-                return 1;
-            }
-
-            return 0;
         }
 
         public static int CompareTextStreams(
@@ -1112,33 +1164,40 @@ namespace BDInfo
             {
                 return 1;
             }
-
-            if (string.Equals(x.LanguageCode, "eng", StringComparison.Ordinal))
+            else
             {
-                return -1;
+                if (x.LanguageCode == "eng")
+                {
+                    return -1;
+                }
+                else if (y.LanguageCode == "eng")
+                {
+                    return 1;
+                }
+                else
+                {
+                    if (x.LanguageCode == y.LanguageCode)
+                    {
+                        if (x.PID > y.PID)
+                        {
+                            return 1;
+                        }
+                        else if (y.PID > x.PID)
+                        {
+                            return -1;
+                        }
+                        else
+                        {
+                            return 0;
+                        }
+                    }
+                    else
+                    {
+                        return string.Compare(
+                            x.LanguageName, y.LanguageName);
+                    }
+                }
             }
-            else if (string.Equals(y.LanguageCode, "eng", StringComparison.Ordinal))
-            {
-                return 1;
-            }
-
-            var strCmp = string.Compare(
-                    x.LanguageName, y.LanguageName, StringComparison.Ordinal);
-            if (strCmp != 0)
-            {
-                return strCmp;
-            }
-
-            if (x.PID < y.PID)
-            {
-                return -1;
-            }
-            else if (y.PID < x.PID)
-            {
-                return 1;
-            }
-
-            return 0;
         }
 
         private static int CompareGraphicsStreams(
@@ -1161,45 +1220,50 @@ namespace BDInfo
             {
                 return 1;
             }
+            else
+            {
+                int sortX = GetStreamTypeSortIndex(x.StreamType);
+                int sortY = GetStreamTypeSortIndex(y.StreamType);
 
-            int sortX = GetStreamTypeSortIndex(x.StreamType);
-            int sortY = GetStreamTypeSortIndex(y.StreamType);
-
-            if (sortX > sortY)
-            {
-                return -1;
+                if (sortX > sortY)
+                {
+                    return -1;
+                }
+                else if (sortY > sortX)
+                {
+                    return 1;
+                }
+                else if (x.LanguageCode == "eng")
+                {
+                    return -1;
+                }
+                else if (y.LanguageCode == "eng")
+                {
+                    return 1;
+                }
+                else
+                {
+                    if (x.LanguageCode == y.LanguageCode)
+                    {
+                        if (x.PID > y.PID)
+                        {
+                            return 1;
+                        }
+                        else if (y.PID > x.PID)
+                        {
+                            return -1;
+                        }
+                        else
+                        {
+                            return 0;
+                        }
+                    }
+                    else
+                    {
+                        return string.Compare(x.LanguageName, y.LanguageName);
+                    }
+                }
             }
-            else if (sortY > sortX)
-            {
-                return 1;
-            }
-            if (string.Equals(x.LanguageCode, "eng", StringComparison.Ordinal))
-            {
-                return -1;
-            }
-            else if (string.Equals(y.LanguageCode, "eng", StringComparison.Ordinal))
-            {
-                return 1;
-            }
-
-            var strCmp = string.Compare(
-                    x.LanguageName, y.LanguageName, StringComparison.Ordinal);
-            if (strCmp != 0)
-            {
-                return strCmp;
-            }
-
-            if (x.PID < y.PID)
-            {
-                return -1;
-            }
-            else if (y.PID < x.PID)
-            {
-                return 1;
-            }
-
-            return 0;
-
         }
 
         private static int GetStreamTypeSortIndex(TSStreamType streamType)
@@ -1235,14 +1299,18 @@ namespace BDInfo
                     return 6;
                 case TSStreamType.AC3_PLUS_AUDIO:
                     return 7;
-                case TSStreamType.DTS_HD_AUDIO:
+                case TSStreamType.MPEG2_AAC_AUDIO:
                     return 8;
-                case TSStreamType.AC3_TRUE_HD_AUDIO:
+                case TSStreamType.MPEG4_AAC_AUDIO:
                     return 9;
-                case TSStreamType.DTS_HD_MASTER_AUDIO:
+                case TSStreamType.DTS_HD_AUDIO:
                     return 10;
-                case TSStreamType.LPCM_AUDIO:
+                case TSStreamType.AC3_TRUE_HD_AUDIO:
                     return 11;
+                case TSStreamType.DTS_HD_MASTER_AUDIO:
+                    return 12;
+                case TSStreamType.LPCM_AUDIO:
+                    return 13;
 
                 case TSStreamType.SUBTITLE:
                     return 1;
@@ -1256,22 +1324,39 @@ namespace BDInfo
             }
         }
 
-        private static int ReadInt32(
+        protected int ReadInt32(
             byte[] data,
             ref int pos)
         {
-            int val = BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(pos));
+            int val =
+                (data[pos] << 24) +
+                (data[pos + 1] << 16) +
+                (data[pos + 2] << 8) +
+                data[pos + 3];
+
             pos += 4;
+
             return val;
         }
 
-        private static int ReadInt16(
+        protected int ReadInt16(
             byte[] data,
             ref int pos)
         {
-            int val = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(pos));
+            int val =
+                (data[pos] << 8) +
+                data[pos + 1];
+
             pos += 2;
+
             return val;
+        }
+
+        protected byte ReadByte(
+            byte[] data,
+            ref int pos)
+        {
+            return data[pos++];
         }
     }
 }

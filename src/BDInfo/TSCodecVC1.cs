@@ -44,7 +44,7 @@ namespace BDInfo
                     --frameHeaderParse;
                     if (frameHeaderParse == 0)
                     {
-                        uint pictureType = 0;
+                        uint pictureType;
                         if (isInterlaced)
                         {
                             if ((parse & 0x80000000) == 0)
@@ -97,7 +97,7 @@ namespace BDInfo
                     switch (sequenceHeaderParse)
                     {
                         case 5:
-                            int profileLevel = ((parse & 0x38) >> 3);
+                            int profileLevel = (parse & 0x38) >> 3;
                             if (((parse & 0xC0) >> 6) == 3)
                             {
                                 stream.EncodingProfile = string.Format(
