@@ -19,12 +19,44 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 
 namespace BDInfo
 {
     public abstract class TSCodecHEVC
     {
+
+        public class MasteringMetadata2086
+        {
+            public ushort[] Primaries;
+            public uint[] Luminance;
+
+            public MasteringMetadata2086()
+            {
+                Primaries = new ushort[8];
+                Luminance = new uint[2];
+            }
+        }
+
+        public class MasteringDisplayColorVolumeValue
+        {
+            public byte Code; // ISO code
+            public ushort[] Values; // G, B, R, W pairs (x values then y values)
+
+            public MasteringDisplayColorVolumeValue()
+            {
+                Code = 0;
+                Values = new ushort[8];
+            }
+        };
+        public static MasteringDisplayColorVolumeValue[] MasteringDisplayColorVolumeValues =
+        {
+            new MasteringDisplayColorVolumeValue{ Code =  1, Values = new ushort[] {15000, 30000,  7500,  3000, 32000, 16500, 15635, 16450} }, // BT.709
+            new MasteringDisplayColorVolumeValue{ Code =  9, Values = new ushort[] { 8500, 39850,  6550,  2300, 35400, 14600, 15635, 16450} }, // BT.2020
+            new MasteringDisplayColorVolumeValue{ Code = 11, Values = new ushort[] {13250, 34500,  7500,  3000, 34000, 16000, 15700, 17550} }, // DCI P3
+            new MasteringDisplayColorVolumeValue{ Code = 12, Values = new ushort[] {13250, 34500,  7500,  3000, 34000, 16000, 15635, 16450} }, // Display P3
+        };
 
         public class VideoParamSetStruct
         {
@@ -72,7 +104,7 @@ namespace BDInfo
 
         public class XXLCommon
         {
-            public bool   SubPicHRDParamsPresentFlag;
+            public bool SubPicHRDParamsPresentFlag;
             public ushort DuCPBRemovalDelayIncrementLengthMinus1;
             public ushort DPBOutputDelayDULengthMinus1;
             public ushort InitialCPBRemovalDelayLengthMinus1;
@@ -197,10 +229,10 @@ namespace BDInfo
             public bool GeneralFrameOnlyConstraintFlag;
 
             //computed
-            public bool NalHrdBpPresentFlag => (VUIParameters?.NAL != null);
-            public bool VclHrdPbPresentFlag => (VUIParameters?.VCL != null);
-            public bool CpbDpbDelaysPresentFlag => (VUIParameters?.XXLCommon != null);
-            public byte ChromaArrayType => (SeparateColourPlaneFlag ? (byte)0 : ChromaFormatIDC);
+            public bool NalHrdBpPresentFlag => VUIParameters?.NAL != null;
+            public bool VclHrdPbPresentFlag => VUIParameters?.VCL != null;
+            public bool CpbDpbDelaysPresentFlag => VUIParameters?.XXLCommon != null;
+            public byte ChromaArrayType => SeparateColourPlaneFlag ? (byte)0 : ChromaFormatIDC;
 
             public SeqParameterSetStruct(VUIParametersStruct vuiParameters, uint profileSpace, bool tierFlag,
                                          uint profileIDC, uint levelIDC, uint picWidthInLumaSamples,
@@ -305,6 +337,8 @@ namespace BDInfo
 
             public byte PreferredTransferCharacteristics;
 
+            public bool IsHdr10Plus;
+
             public ExtendedDataSet()
             {
                 VideoParamSets = new List<VideoParamSetStruct>();
@@ -322,6 +356,8 @@ namespace BDInfo
                 ExtendedFormatInfo = new List<string>();
 
                 PreferredTransferCharacteristics = 2;
+
+                IsHdr10Plus = false;
             }
         }
 
@@ -329,18 +365,18 @@ namespace BDInfo
         {
             switch (colourPrimaries)
             {
-                case  1 : return "BT.709";
-                case  4 : return "BT.470 System M";
-                case  5 : return "BT.601 PAL";
-                case  6 : return "BT.601 NTSC";
-                case  7 : return "SMPTE 240M";                                  //Same as BT.601 NTSC
-                case  8 : return "Generic film";
-                case  9 : return "BT.2020";                                     //Added in HEVC
-                case 10 : return "XYZ";                                         //Added in HEVC 2014
-                case 11 : return "DCI P3";                                      //Added in HEVC 2016
-                case 12 : return "Display P3";                                  //Added in HEVC 2016
-                case 22 : return "EBU Tech 3213";                               //Added in HEVC 2016
-                default : return "";
+                case 1: return "BT.709";
+                case 4: return "BT.470 System M";
+                case 5: return "BT.601 PAL";
+                case 6: return "BT.601 NTSC";
+                case 7: return "SMPTE 240M";        // Same as BT.601 NTSC
+                case 8: return "Generic film";
+                case 9: return "BT.2020";           // Added in HEVC
+                case 10: return "XYZ";              // Added in HEVC 2014
+                case 11: return "DCI P3";           // Added in HEVC 2016
+                case 12: return "Display P3";       // Added in HEVC 2016
+                case 22: return "EBU Tech 3213";    // Added in HEVC 2016
+                default: return "";
             }
         }
 
@@ -348,22 +384,22 @@ namespace BDInfo
         {
             switch (transferCharacteristics)
             {
-                case 1: return "BT.709"; //Same as BT.601
+                case 1: return "BT.709";                        // Same as BT.601
                 case 4: return "BT.470 System M";
                 case 5: return "BT.470 System B/G";
                 case 6: return "BT.601";
                 case 7: return "SMPTE 240M";
                 case 8: return "Linear";
-                case 9: return "Logarithmic (100:1)";                         //Added in MPEG-4 Visual
-                case 10: return "Logarithmic (316.22777:1)";                   //Added in MPEG-4 Visual
-                case 11: return "xvYCC";                                       //Added in AVC
-                case 12: return "BT.1361";                                     //Added in AVC
-                case 13: return "sRGB/sYCC";                                   //Added in HEVC
-                case 14: return "BT.2020 (10-bit)"; //Same a BT.601            //Added in HEVC, 10/12-bit difference is in ISO 23001-8
-                case 15: return "BT.2020 (12-bit)"; //Same a BT.601            //Added in HEVC, 10/12-bit difference is in ISO 23001-8
-                case 16: return "PQ";                                          //Added in HEVC 2015
-                case 17: return "SMPTE 428M";                                  //Added in HEVC 2015
-                case 18: return "HLG";                                         //Added in HEVC 2016
+                case 9: return "Logarithmic (100:1)";           // Added in MPEG-4 Visual
+                case 10: return "Logarithmic (316.22777:1)";    // Added in MPEG-4 Visual
+                case 11: return "xvYCC";                        // Added in AVC
+                case 12: return "BT.1361";                      // Added in AVC
+                case 13: return "sRGB/sYCC";                    // Added in HEVC
+                case 14: return "BT.2020 (10-bit)";             // Same a BT.601 - Added in HEVC, 10/12-bit difference is in ISO 23001-8
+                case 15: return "BT.2020 (12-bit)";             // Same a BT.601 - Added in HEVC, 10/12-bit difference is in ISO 23001-8
+                case 16: return "PQ";                           // Added in HEVC 2015
+                case 17: return "SMPTE 428M";                   // Added in HEVC 2015
+                case 18: return "HLG";                          // Added in HEVC 2016
                 default: return "";
             }
         }
@@ -372,19 +408,19 @@ namespace BDInfo
         {
             switch (matrixCoefficients)
             {
-                case 0: return "Identity";                                    //Added in AVC
+                case 0: return "Identity";                              // Added in AVC
                 case 1: return "BT.709";
                 case 4: return "FCC 73.682";
                 case 5: return "BT.470 System B/G";
-                case 6: return "BT.601"; //Same as BT.470 System B/G
+                case 6: return "BT.601";                                // Same as BT.470 System B/G
                 case 7: return "SMPTE 240M";
-                case 8: return "YCgCo";                                       //Added in AVC
-                case 9: return "BT.2020 non-constant";                        //Added in HEVC
-                case 10: return "BT.2020 constant";                            //Added in HEVC
-                case 11: return "Y'D'zD'x";                                    //Added in HEVC 2016
-                case 12: return "Chromaticity-derived non-constant";           //Added in HEVC 2016
-                case 13: return "Chromaticity-derived constant";               //Added in HEVC 2016
-                case 14: return "ICtCp";                                       //Added in HEVC 2016
+                case 8: return "YCgCo";                                 // Added in AVC
+                case 9: return "BT.2020 non-constant";                  // Added in HEVC
+                case 10: return "BT.2020 constant";                     // Added in HEVC
+                case 11: return "Y'D'zD'x";                             // Added in HEVC 2016
+                case 12: return "Chromaticity-derived non-constant";    // Added in HEVC 2016
+                case 13: return "Chromaticity-derived constant";        // Added in HEVC 2016
+                case 14: return "ICtCp";                                // Added in HEVC 2016
                 default: return "";
             }
         }
@@ -400,26 +436,33 @@ namespace BDInfo
         private static bool _generalInterlacedSourceFlag;
         private static bool _generalFrameOnlyConstraintFlag;
 
-        public static ExtendedDataSet ExtendedData { get; private set; }
+        public static ExtendedDataSet ExtendedData;
 
-        public static List<VideoParamSetStruct> VideoParamSets { get; private set; }
-        public static List<VUIParametersStruct> VUIParameterSets { get; private set; }
-        public static List<SeqParameterSetStruct> SeqParameterSets { get; private set; }
-        public static List<PicParameterSetStruct> PicParameterSets { get; private set; }
+        public static List<VideoParamSetStruct> VideoParamSets;
+        public static List<VUIParametersStruct> VUIParameterSets;
+        public static List<SeqParameterSetStruct> SeqParameterSets;
+        public static List<PicParameterSetStruct> PicParameterSets;
 
-        public static string MasteringDisplayColorPrimaries { get; private set; }
-        public static string MasteringDisplayLuminance { get; private set; }
-        public static uint MaximumContentLightLevel { get; private set; }
-        public static uint MaximumFrameAverageLightLevel { get; private set; }
+        public static string MasteringDisplayColorPrimaries;
+        public static string MasteringDisplayLuminance;
+        public static uint MaximumContentLightLevel;
+        public static uint MaximumFrameAverageLightLevel;
 
-        public static List<string> ExtendedFormatInfo { get; private set; }
-        public static bool LightLevelAvailable { get; private set; }
+        public static List<string> ExtendedFormatInfo;
+        public static bool LightLevelAvailable;
 
-        public static byte PreferredTransferCharacteristics { get; private set; }
+        public static byte PreferredTransferCharacteristics;
+
+        public static bool IsHdr10Plus;
+
+        private static bool _firstSliceSegmentInPicFlag;
+        private static uint _slicePicParameterSetId;
+
+        private static bool _isInitialized;
 
         public static void Scan(TSVideoStream stream, TSStreamBuffer buffer, ref string tag)
         {
-            if (stream.IsInitialized) return;
+            _isInitialized = stream.IsInitialized;
 
             if (stream.ExtendedData == null)
                 stream.ExtendedData = new ExtendedDataSet();
@@ -443,8 +486,11 @@ namespace BDInfo
 
             ExtendedFormatInfo = ExtendedData.ExtendedFormatInfo;
 
+            bool frameTypeRead = false;
+
             do
             {
+                var syncByteFound = false;
                 do
                 {
                     var streamPos = buffer.Position;
@@ -452,28 +498,57 @@ namespace BDInfo
                         buffer.ReadByte() == 0x0 &&
                         buffer.ReadByte() == 0x0 &&
                         buffer.ReadByte() == 0x1)
+                    {
+                        syncByteFound = true;
                         break;
+                    }
 
-                    buffer.BSSkipBytes((int) (streamPos - buffer.Position));
+                    buffer.BSSkipBytes((int)(streamPos - buffer.Position));
+
                     if (buffer.ReadByte() == 0x0 &&
                         buffer.ReadByte() == 0x0 &&
                         buffer.ReadByte() == 0x1)
+                    {
+                        syncByteFound = true;
                         break;
-                    buffer.BSSkipBytes((int)(streamPos - buffer.Position + 1));
-                } while (buffer.Position < buffer.Length);
+                    }
 
-                if (buffer.Position < buffer.Length)
+                    buffer.BSSkipBytes((int)(streamPos - buffer.Position + 1));
+
+                } while ((buffer.Position < buffer.Length - 3) &&
+                        (!_isInitialized || (_isInitialized && !frameTypeRead)));
+
+                if (buffer.Position < buffer.Length && syncByteFound)
                 {
                     var lastStreamPos = buffer.Position;
 
-                    buffer.BSSkipBits(1); // skip 1 bit
+                    buffer.BSSkipBits(1, true); // Skip 1 bit
 
-                    long nalUnitType = buffer.ReadBits2(6);
+                    long nalUnitType = buffer.ReadBits2(6, true);
 
-                    buffer.BSSkipBits(9); // nuh_layer_id (6), nuh_temporal_id_plus1 (3)
+                    buffer.BSSkipBits(9, true); // nuh_layer_id (6), nuh_temporal_id_plus1 (3)
 
                     switch (nalUnitType)
                     {
+                        case 0:
+                        case 1:
+                        case 2:
+                        case 3:
+                        case 4:
+                        case 5:
+                        case 6:
+                        case 7:
+                        case 8:
+                        case 9:
+                        case 16:
+                        case 17:
+                        case 18:
+                        case 19:
+                        case 20:
+                        case 21:
+                            tag = SliceSegmentLayer(buffer, nalUnitType);
+                            frameTypeRead = tag != null;
+                            break;
                         case 32:
                             VideoParameterSet(buffer);
                             break;
@@ -493,9 +568,10 @@ namespace BDInfo
                     }
 
                     buffer.BSSkipNextByte();
-                    buffer.BSSkipBytes((int) (lastStreamPos - buffer.Position));
+                    buffer.BSSkipBytes((int)(lastStreamPos - buffer.Position), true);
                 }
-            } while (buffer.Position < buffer.Length);
+            } while ((buffer.Position < buffer.Length - 3) &&
+                     (!_isInitialized || (_isInitialized && !frameTypeRead)));
 
             ExtendedData.PreferredTransferCharacteristics = PreferredTransferCharacteristics;
 
@@ -512,10 +588,12 @@ namespace BDInfo
             ExtendedData.SeqParameterSets = SeqParameterSets;
             ExtendedData.PicParameterSets = PicParameterSets;
 
+            ExtendedData.IsHdr10Plus = IsHdr10Plus;
+
             stream.ExtendedData = ExtendedData;
 
             // TODO: profile to string
-            if (SeqParameterSets.Count > 0)
+            if (SeqParameterSets.Count > 0 && !stream.IsInitialized)
             {
                 SeqParameterSetStruct seqParameterSet = SeqParameterSets[0];
                 if (seqParameterSet.ProfileSpace == 0)
@@ -544,12 +622,12 @@ namespace BDInfo
                     }
                     if (seqParameterSet.LevelIDC > 0)
                     {
-                        var calcLevel = (float) _levelIDC/30;
-                        var dec = _levelIDC%10;
+                        var calcLevel = (float)seqParameterSet.LevelIDC / 30;
+                        var dec = seqParameterSet.LevelIDC % 10;
                         profile += " @ Level " +
                                    string.Format(CultureInfo.InvariantCulture, dec >= 1 ? "{0:0.0}" : "{0:0}", calcLevel) +
                                    " @ ";
-                        if (_tierFlag) profile += "High";
+                        if (seqParameterSet.TierFlag) profile += "High";
                         else profile += "Main";
                     }
 
@@ -581,13 +659,13 @@ namespace BDInfo
                         seqParameterSet.ChromaFormatIDC == 1 &&                         // ChromaFormat 4:2:0
                         seqParameterSet.VUIParameters.VideoSignalTypePresentFlag &&
                         seqParameterSet.VUIParameters.ColourDescriptionPresentFlag &&
-                        seqParameterSet.VUIParameters.ColourPrimaries == 9 &&           //ColourPrimaries BT.2020
-                        seqParameterSet.VUIParameters.TransferCharacteristics == 16 &&  //TransferCharacteristics PQ
-                        (seqParameterSet.VUIParameters.MatrixCoefficients == 9 ||       //MatrixCoefficients BT.2020 non-constant
-                        seqParameterSet.VUIParameters.MatrixCoefficients == 10) &&      //MatrixCoefficients BT.2020 constant
+                        seqParameterSet.VUIParameters.ColourPrimaries == 9 &&           // ColourPrimaries BT.2020
+                        seqParameterSet.VUIParameters.TransferCharacteristics == 16 &&  // TransferCharacteristics PQ
+                        (seqParameterSet.VUIParameters.MatrixCoefficients == 9 ||       // MatrixCoefficients BT.2020 non-constant
+                        seqParameterSet.VUIParameters.MatrixCoefficients == 10) &&      // MatrixCoefficients BT.2020 constant
                         !string.IsNullOrEmpty(MasteringDisplayColorPrimaries))
                     {
-                        ExtendedFormatInfo.Add(stream.PID >= 4117 ? "Dolby Vision" : "HDR10");
+                        ExtendedFormatInfo.Add(stream.PID >= 4117 ? "Dolby Vision" : IsHdr10Plus ? "HDR10+" : "HDR10");
                     }
 
                     if (seqParameterSet.VUIParameters.VideoSignalTypePresentFlag)
@@ -609,7 +687,7 @@ namespace BDInfo
                 }
             }
 
-            if (BDInfoSettings.ExtendedStreamDiagnostics)
+            if (BDInfoSettings.ExtendedStreamDiagnostics && !stream.IsInitialized)
             {
                 if (MasteringDisplayColorPrimaries != string.Empty)
                 {
@@ -632,57 +710,110 @@ namespace BDInfo
                 stream.IsInitialized = true;
         }
 
+        private static string SliceSegmentLayer(TSStreamBuffer buffer, long nalUnitType)
+        {
+            string tag = null;
+
+            // Slice headers
+            bool dependentSliceSegmentFlag = false;
+
+            _firstSliceSegmentInPicFlag = buffer.ReadBool();
+
+            if (nalUnitType >= 16 && nalUnitType <= 23)
+                _ = buffer.ReadBool(); // no_output_of_prior_pics_flag
+
+            _slicePicParameterSetId = buffer.ReadExp(true);
+
+            if (_slicePicParameterSetId >= PicParameterSets.Count)
+            {
+                _slicePicParameterSetId = uint.MaxValue;
+                return tag;
+            }
+
+            if (!_firstSliceSegmentInPicFlag)
+            {
+                if (PicParameterSets[(int)_slicePicParameterSetId].DependentSliceSegmentsEnabledFlag)
+                {
+                    _ = buffer.ReadBool(true);
+                }
+                return tag;
+            }
+
+            if (!dependentSliceSegmentFlag)
+            {
+                buffer.BSSkipBits(PicParameterSets[(int)_slicePicParameterSetId].NumExtraSliceHeaderBits);
+                uint sliceType = buffer.ReadExp(true);
+                switch (sliceType)
+                {
+                    case 0:
+                        tag = "P";
+                        break;
+                    case 1:
+                        tag = "B";
+                        break;
+                    case 2:
+                        tag = "I";
+                        break;
+                    default:
+                        break;
+                }
+            }
+            return tag;
+        }
+
         // packet 32
         private static void VideoParameterSet(TSStreamBuffer buffer)
         {
-            int vpsVideoParameterSetID = buffer.ReadBits2(4);
+            if (_isInitialized) return;
 
-            buffer.BSSkipBits(8); //vps_reserved_three_2bits, vps_reserved_zero_6bits
+            int vpsVideoParameterSetID = buffer.ReadBits2(4, true);
 
-            var maxSubLayers = buffer.ReadBits2(3); //vps_max_sub_layers_minus1
+            buffer.BSSkipBits(8, true); // vps_reserved_three_2bits, vps_reserved_zero_6bits
 
-            buffer.BSSkipBits(17); //vps_temporal_id_nesting_flag, vps_reserved_0xffff_16bits
+            var maxSubLayers = buffer.ReadBits2(3, true); // vps_max_sub_layers_minus1
+
+            buffer.BSSkipBits(17, true); // vps_temporal_id_nesting_flag, vps_reserved_0xffff_16bits
 
             ProfileTierLevel(buffer, maxSubLayers);
 
-            var tempB = buffer.ReadBool(); //vps_sub_layer_ordering_info_present_flag
-            for (var subLayerPos = (tempB ? 0 : maxSubLayers); subLayerPos <= maxSubLayers; subLayerPos++)
+            var tempB = buffer.ReadBool(true); // vps_sub_layer_ordering_info_present_flag
+            for (var subLayerPos = tempB ? 0 : maxSubLayers; subLayerPos <= maxSubLayers; subLayerPos++)
             {
-                buffer.SkipExpMulti(3); //vps_max_dec_pic_buffering_minus1, vps_max_num_reorder_pics, vps_max_latency_increase_plus1
+                buffer.SkipExpMulti(3, true); // vps_max_dec_pic_buffering_minus1, vps_max_num_reorder_pics, vps_max_latency_increase_plus1
             }
 
-            var vpsMaxLayerID = buffer.ReadBits2(6);
-            var vpsNumLayerSetsMinus1 = buffer.ReadExp(); //vps_num_layer_sets_minus1
+            var vpsMaxLayerID = buffer.ReadBits2(6, true);
+            var vpsNumLayerSetsMinus1 = buffer.ReadExp(true); // vps_num_layer_sets_minus1
 
             for (var layerSetPos = 1; layerSetPos <= vpsNumLayerSetsMinus1; layerSetPos++)
                 for (var layerId = 0; layerId <= vpsMaxLayerID; layerId++)
-                    buffer.BSSkipBits(1); //layer_id_included_flag
+                    buffer.BSSkipBits(1, true); //layer_id_included_flag
 
-            var vpsTimingInfoPresentFlag = buffer.ReadBool();
+            var vpsTimingInfoPresentFlag = buffer.ReadBool(true);
             if (vpsTimingInfoPresentFlag)
             {
-                buffer.BSSkipBits(64); //vps_num_units_in_tick, vps_time_scale
+                buffer.BSSkipBits(64, true); //vps_num_units_in_tick, vps_time_scale
 
-                var vpsPocProportionalToTimingFlag = buffer.ReadBool();
+                var vpsPocProportionalToTimingFlag = buffer.ReadBool(true);
                 if (!vpsPocProportionalToTimingFlag)
-                    buffer.SkipExp(); //vps_num_ticks_poc_diff_one_minus1
+                    buffer.SkipExp(true); //vps_num_ticks_poc_diff_one_minus1
 
-                var vpsNumHRDParameters = (int)buffer.ReadExp();
+                var vpsNumHRDParameters = (int)buffer.ReadExp(true);
                 if (vpsNumHRDParameters > 1024) vpsNumHRDParameters = 0;
                 for (var hrdPos = 0; hrdPos < vpsNumHRDParameters; hrdPos++)
                 {
                     XXLCommon xxlCommon = null;
                     XXL nal = null, vcl = null;
 
-                    buffer.SkipExp(); //hrd_layer_sed_idx
-                    var cprmsPresentFlag = hrdPos <= 0 || buffer.ReadBool();
+                    buffer.SkipExp(true); // hrd_layer_sed_idx
+                    var cprmsPresentFlag = hrdPos <= 0 || buffer.ReadBool(true);
                     HRDParameters(buffer, cprmsPresentFlag, vpsNumLayerSetsMinus1, ref xxlCommon, ref nal, ref vcl);
                 }
             }
-            buffer.BSSkipBits(1); //vps_extension_flag
+            buffer.BSSkipBits(1, true); // vps_extension_flag
 
-            if (vpsVideoParameterSetID>=VideoParamSets.Count)
-                for (int i = VideoParamSets.Count-1; i < vpsVideoParameterSetID; i++)
+            if (vpsVideoParameterSetID >= VideoParamSets.Count)
+                for (int i = VideoParamSets.Count - 1; i < vpsVideoParameterSetID; i++)
                 {
                     VideoParamSets.Add(new VideoParamSetStruct(0));
                 }
@@ -692,79 +823,81 @@ namespace BDInfo
         // packet 33
         private static void SeqParameterSet(TSStreamBuffer buffer)
         {
+            if (_isInitialized) return;
+
             VUIParametersStruct vuiParametersItem = new VUIParametersStruct();
             VideoParamSetStruct videoParamSetItem = new VideoParamSetStruct();
 
             uint confWinLeftOffset = 0, confWinRightOffset = 0, confWinTopOffset = 0, confWinBottomOffset = 0;
             bool separateColourPlaneFlag = false;
 
-            uint videoParameterSetID = buffer.ReadBits2(4);
+            uint videoParameterSetID = buffer.ReadBits2(4, true);
 
             if (videoParameterSetID >= VideoParamSets.Count ||
-                VideoParamSets[(int) videoParameterSetID] == null)
+                VideoParamSets[(int)videoParameterSetID] == null)
             {
                 return;
             }
 
-            uint maxSubLayersMinus1 = buffer.ReadBits2(3);
-            buffer.BSSkipBits(1);
+            uint maxSubLayersMinus1 = buffer.ReadBits2(3, true);
+            buffer.BSSkipBits(1, true);
             ProfileTierLevel(buffer, maxSubLayersMinus1);
-            var spsSeqParameterSetID = buffer.ReadExp();
-            var chromaFormatIDC = buffer.ReadExp();
+            var spsSeqParameterSetID = buffer.ReadExp(true);
+            var chromaFormatIDC = buffer.ReadExp(true);
             if (chromaFormatIDC >= 4)
                 return;
             if (chromaFormatIDC == 3)
-                separateColourPlaneFlag = buffer.ReadBool();
-            var picWidthInLumaSamples = buffer.ReadExp();
-            var picHeightInLumaSamples = buffer.ReadExp();
-            if (buffer.ReadBool()) //conformance_window_flag
+                separateColourPlaneFlag = buffer.ReadBool(true);
+            var picWidthInLumaSamples = buffer.ReadExp(true);
+            var picHeightInLumaSamples = buffer.ReadExp(true);
+            if (buffer.ReadBool(true)) // conformance_window_flag
             {
-                confWinLeftOffset = buffer.ReadExp();
-                confWinRightOffset = buffer.ReadExp();
-                confWinTopOffset = buffer.ReadExp();
-                confWinBottomOffset = buffer.ReadExp();
+                confWinLeftOffset = buffer.ReadExp(true);
+                confWinRightOffset = buffer.ReadExp(true);
+                confWinTopOffset = buffer.ReadExp(true);
+                confWinBottomOffset = buffer.ReadExp(true);
             }
 
-            var bitDepthLumaMinus8 = buffer.ReadExp();
+            var bitDepthLumaMinus8 = buffer.ReadExp(true);
             if (bitDepthLumaMinus8 > 6)
                 return;
-            var bitDepthChromaMinus8 = buffer.ReadExp();
+            var bitDepthChromaMinus8 = buffer.ReadExp(true);
             if (bitDepthChromaMinus8 > 6)
                 return;
-            var log2MaxPicOrderCntLsbMinus4 = buffer.ReadExp();
+            var log2MaxPicOrderCntLsbMinus4 = buffer.ReadExp(true);
             if (log2MaxPicOrderCntLsbMinus4 > 12)
                 return;
-            var spsSubLayerOrderingInfoPresentFlag = buffer.ReadBool();
-            for (uint subLayerPos = (spsSubLayerOrderingInfoPresentFlag ? 0 : maxSubLayersMinus1); subLayerPos <= maxSubLayersMinus1; subLayerPos++)
+            var spsSubLayerOrderingInfoPresentFlag = buffer.ReadBool(true);
+            for (uint subLayerPos = spsSubLayerOrderingInfoPresentFlag ? 0 : maxSubLayersMinus1; subLayerPos <= maxSubLayersMinus1; subLayerPos++)
             {
-                buffer.SkipExpMulti(3);
+                buffer.SkipExpMulti(3, true);
             }
-            buffer.SkipExpMulti(6);
+            buffer.SkipExpMulti(6, true);
 
-            if (buffer.ReadBool()) //scaling_list_enabled_flag
-                if (buffer.ReadBool()) //sps_scaling_list_data_present_flag
+            if (buffer.ReadBool(true)) // scaling_list_enabled_flag
+                if (buffer.ReadBool(true)) // sps_scaling_list_data_present_flag
                     ScalingListData(buffer);
 
-            buffer.BSSkipBits(2);
-            if (buffer.ReadBool()) //pcm_enabled_flag
+            buffer.BSSkipBits(2, true);
+            if (buffer.ReadBool(true)) // pcm_enabled_flag
             {
-                buffer.BSSkipBits(8);
-                buffer.SkipExpMulti(2);
-                buffer.BSSkipBits(1);
+                buffer.BSSkipBits(8, true);
+                buffer.SkipExpMulti(2, true);
+                buffer.BSSkipBits(1, true);
             }
-            var numShortTermRefPicSets = buffer.ReadExp();
+            var numShortTermRefPicSets = buffer.ReadExp(true);
             ShortTermRefPicSets(buffer, numShortTermRefPicSets);
-            if (buffer.ReadBool()) //long_term_ref_pics_present_flag
+            if (buffer.ReadBool(true)) // long_term_ref_pics_present_flag
             {
-                var numLongTermRefPicsSps = buffer.ReadExp();
+                var numLongTermRefPicsSps = buffer.ReadExp(true);
                 for (int i = 0; i < numLongTermRefPicsSps; i++)
                 {
-                    buffer.BSSkipBits((int) (log2MaxPicOrderCntLsbMinus4+4));
-                    buffer.BSSkipBits(1);
+                    buffer.BSSkipBits((int)(log2MaxPicOrderCntLsbMinus4 + 4), true);
+                    buffer.BSSkipBits(1, true);
                 }
             }
-            buffer.BSSkipBits(2);
-            if (buffer.ReadBool()) //vui_parameters_present_flag
+            buffer.BSSkipBits(2, true);
+            if (buffer.ReadBool(true)) // vui_parameters_present_flag
             {
                 VUIParameters(buffer, videoParamSetItem, ref vuiParametersItem);
             }
@@ -774,7 +907,7 @@ namespace BDInfo
                 {
                     SeqParameterSets.Add(new SeqParameterSetStruct());
                 }
-            SeqParameterSets[(int) spsSeqParameterSetID] = new SeqParameterSetStruct(vuiParametersItem,
+            SeqParameterSets[(int)spsSeqParameterSetID] = new SeqParameterSetStruct(vuiParametersItem,
                                                                                      _profileSpace,
                                                                                      _tierFlag,
                                                                                      _profileIDC,
@@ -785,12 +918,12 @@ namespace BDInfo
                                                                                      confWinRightOffset,
                                                                                      confWinTopOffset,
                                                                                      confWinBottomOffset,
-                                                                                     (byte) videoParameterSetID,
-                                                                                     (byte) chromaFormatIDC,
+                                                                                     (byte)videoParameterSetID,
+                                                                                     (byte)chromaFormatIDC,
                                                                                      separateColourPlaneFlag,
-                                                                                     (byte) log2MaxPicOrderCntLsbMinus4,
-                                                                                     (byte) bitDepthLumaMinus8,
-                                                                                     (byte) bitDepthChromaMinus8,
+                                                                                     (byte)log2MaxPicOrderCntLsbMinus4,
+                                                                                     (byte)bitDepthLumaMinus8,
+                                                                                     (byte)bitDepthChromaMinus8,
                                                                                      _generalProgressiveSourceFlag,
                                                                                      _generalInterlacedSourceFlag,
                                                                                      _generalFrameOnlyConstraintFlag);
@@ -799,64 +932,66 @@ namespace BDInfo
         // packet 34
         private static void PicParameterSet(TSStreamBuffer buffer)
         {
-            var ppsPicParameterSetID = buffer.ReadExp();
+            if (_isInitialized) return;
+
+            var ppsPicParameterSetID = buffer.ReadExp(true);
             if (ppsPicParameterSetID >= 64)
                 return;
-            var ppsSeqParameterSetID = buffer.ReadExp();
+            var ppsSeqParameterSetID = buffer.ReadExp(true);
             if (ppsSeqParameterSetID >= 16)
                 return;
-            if (ppsSeqParameterSetID >= SeqParameterSets.Count || SeqParameterSets[(int) ppsSeqParameterSetID] == null)
+            if (ppsSeqParameterSetID >= SeqParameterSets.Count || SeqParameterSets[(int)ppsSeqParameterSetID] == null)
                 return;
 
-            var dependentSliceSegmentsEnabledFlag = buffer.ReadBool();
-            buffer.BSSkipBits(1);
-            var numExtraSliceHeaderBits = (byte) buffer.ReadBits2(3);
-            buffer.BSSkipBits(2);
-            var numRefIdxL0DefaultActiveMinus1 = buffer.ReadExp();
-            var numRefIdxL1DefaultActiveMinus1 = buffer.ReadExp();
-            buffer.SkipExp();
-            buffer.BSSkipBits(2);
-            if (buffer.ReadBool()) //cu_qp_delta_enabled_flag
-                buffer.SkipExp(); //diff_cu_qp_delta_depth
-            buffer.SkipExpMulti(2);
-            buffer.BSSkipBits(4);
-            var tilesEnabledFlag = buffer.ReadBool();
-            buffer.BSSkipBits(1);
+            var dependentSliceSegmentsEnabledFlag = buffer.ReadBool(true);
+            buffer.BSSkipBits(1, true);
+            var numExtraSliceHeaderBits = (byte)buffer.ReadBits2(3, true);
+            buffer.BSSkipBits(2, true);
+            var numRefIdxL0DefaultActiveMinus1 = buffer.ReadExp(true);
+            var numRefIdxL1DefaultActiveMinus1 = buffer.ReadExp(true);
+            buffer.SkipExp(true);
+            buffer.BSSkipBits(2, true);
+            if (buffer.ReadBool(true)) // cu_qp_delta_enabled_flag
+                buffer.SkipExp(true); // diff_cu_qp_delta_depth
+            buffer.SkipExpMulti(2, true);
+            buffer.BSSkipBits(4, true);
+            var tilesEnabledFlag = buffer.ReadBool(true);
+            buffer.BSSkipBits(1, true);
             if (tilesEnabledFlag)
             {
-                var numTileColumnsMinus1 = buffer.ReadExp();
-                var numTileRowsMinus1 = buffer.ReadExp();
-                var uniformSpacingFlag = buffer.ReadBool();
+                var numTileColumnsMinus1 = buffer.ReadExp(true);
+                var numTileRowsMinus1 = buffer.ReadExp(true);
+                var uniformSpacingFlag = buffer.ReadBool(true);
                 if (!uniformSpacingFlag)
                 {
-                    buffer.SkipExpMulti((int) numTileColumnsMinus1);
-                    buffer.SkipExpMulti((int) numTileRowsMinus1);
+                    buffer.SkipExpMulti((int)numTileColumnsMinus1, true);
+                    buffer.SkipExpMulti((int)numTileRowsMinus1, true);
                 }
-                buffer.BSSkipBits(1);
+                buffer.BSSkipBits(1, true);
             }
-            buffer.BSSkipBits(1);
-            if (buffer.ReadBool()) //deblocking_filter_control_present_flag
+            buffer.BSSkipBits(1, true);
+            if (buffer.ReadBool(true)) // deblocking_filter_control_present_flag
             {
-                buffer.BSSkipBits(1);
-                if (!buffer.ReadBool()) //pps_disable_deblocking_filter_flag
+                buffer.BSSkipBits(1, true);
+                if (!buffer.ReadBool(true)) // pps_disable_deblocking_filter_flag
                 {
-                    buffer.SkipExpMulti(2);
+                    buffer.SkipExpMulti(2, true);
                 }
             }
-            if (buffer.ReadBool()) //pps_scaling_list_data_present_flag
+            if (buffer.ReadBool(true)) // pps_scaling_list_data_present_flag
                 ScalingListData(buffer);
-            buffer.BSSkipBits(1);
-            buffer.SkipExp();
-            buffer.BSSkipBits(1);
-            if (buffer.ReadBool()) //pps_extension_flag
+            buffer.BSSkipBits(1, true);
+            buffer.SkipExp(true);
+            buffer.BSSkipBits(1, true);
+            if (buffer.ReadBool(true)) // pps_extension_flag
                 buffer.BSSkipNextByte();
 
             if (ppsPicParameterSetID >= PicParameterSets.Count)
                 for (int i = PicParameterSets.Count - 1; i < ppsPicParameterSetID; i++)
                     PicParameterSets.Add(new PicParameterSetStruct());
-            PicParameterSets[(int) ppsPicParameterSetID] = new PicParameterSetStruct((byte) ppsSeqParameterSetID,
-                                                                                     (byte) numRefIdxL0DefaultActiveMinus1,
-                                                                                     (byte) numRefIdxL1DefaultActiveMinus1,
+            PicParameterSets[(int)ppsPicParameterSetID] = new PicParameterSetStruct((byte)ppsSeqParameterSetID,
+                                                                                     (byte)numRefIdxL0DefaultActiveMinus1,
+                                                                                     (byte)numRefIdxL1DefaultActiveMinus1,
                                                                                      numExtraSliceHeaderBits,
                                                                                      dependentSliceSegmentsEnabledFlag);
 
@@ -865,17 +1000,19 @@ namespace BDInfo
         // packet 35
         private static void AccessUnitDelimiter(TSStreamBuffer buffer)
         {
-            buffer.BSSkipBits(3);
+            buffer.BSSkipBits(3, true);
         }
 
         // packet 39 & 40
         private static void Sei(TSStreamBuffer buffer)
         {
+            if (_isInitialized) return;
+
             long elementStart = buffer.Position;
 
             int numBytes;
 
-            // find element end
+            // Find element end
             do
             {
                 var streamPos = buffer.Position;
@@ -902,9 +1039,9 @@ namespace BDInfo
 
             var elementSize = buffer.Position - elementStart;
 
-            buffer.BSSkipBytes((int) (elementSize *-1));
+            buffer.BSSkipBytes((int)(elementSize * -1));
 
-            elementSize -= numBytes+1;
+            elementSize -= numBytes + 1;
 
             do
             {
@@ -914,18 +1051,18 @@ namespace BDInfo
 
                 do
                 {
-                    payloadTypeByte = buffer.ReadByte();
+                    payloadTypeByte = buffer.ReadByte(true);
                     payloadType += payloadTypeByte;
                 } while (payloadTypeByte == 0xFF);
                 do
                 {
-                    payloadSizeByte = buffer.ReadByte();
+                    payloadSizeByte = buffer.ReadByte(true);
                     payloadSize += payloadSizeByte;
-                } while (payloadSizeByte==0xFF);
+                } while (payloadSizeByte == 0xFF);
 
                 ulong SavedPos = (ulong)buffer.Position + payloadSize;
 
-                if (SavedPos > (ulong) buffer.Length) // wrong length
+                if (SavedPos > (ulong)buffer.Length) // Wrong length
                     return;
 
                 switch (payloadType)
@@ -951,36 +1088,62 @@ namespace BDInfo
                     case 147:
                         SeiAlternativeTransferCharacteristics(buffer);
                         break;
+                    case 4: // SEI_USER_DATA_REGISTERED_ITU_T_T35
+                        SeiUserDataRegisteredItuTT35(buffer, payloadSize);
+                        break;
                     default:
-                        buffer.BSSkipBytes((int) payloadSize);
+                        buffer.BSSkipBytes((int)payloadSize, true);
                         break;
                 }
-                if (SavedPos > (ulong) buffer.Position)
-                    buffer.BSSkipBytes((int) (SavedPos - (ulong) buffer.Position));
+                if (SavedPos > (ulong)buffer.Position)
+                    buffer.BSSkipBytes((int)(SavedPos - (ulong)buffer.Position), true);
             } while (buffer.Position < elementStart + elementSize);
+        }
+
+        // SEI - 4 SEI_USER_DATA_REGISTERED_ITU_T_T35
+        private static void SeiUserDataRegisteredItuTT35(TSStreamBuffer buffer, uint payloadSize)
+        {
+            ushort country_code = buffer.ReadBits2(8, true);                      // itu_t_t35_country_code
+            ushort terminal_provider_code = buffer.ReadBits2(16, true);           // itu_t_t35_terminal_provider_code
+            ushort terminal_provider_oriented_code = buffer.ReadBits2(16, true);  // itu_t_t35_terminal_provider_oriented_code
+            uint application_id = buffer.ReadBits4(8, true);                      // application_identifier
+            uint application_version = buffer.ReadBits4(8, true);                 // application_version
+            uint num_windows = buffer.ReadBits4(2, true);                         // num_windows
+            buffer.BSSkipBits(6, true);
+            // ST 2094-40 page 4
+            if (country_code == 0xB5 && terminal_provider_code == 0x003C && terminal_provider_oriented_code == 0x0001)
+            {
+                // ST 2094-40 application #4 page 4
+                if (application_id == 4 && (application_version == 0 || application_version == 1) && num_windows == 1)
+                {
+                    IsHdr10Plus = true;
+                }
+            }
+            payloadSize -= 8;
+            buffer.BSSkipBytes((int)payloadSize, true);
         }
 
         // SEI - 0
         private static void SeiMessageBufferingPeriod(TSStreamBuffer buffer, ref uint seqParameterSetID, uint payloadSize)
         {
-            seqParameterSetID = buffer.ReadExp();
+            seqParameterSetID = buffer.ReadExp(true);
             SeqParameterSetStruct seqParameterSetItem;
-            if (seqParameterSetID >= SeqParameterSets.Count || (seqParameterSetItem = SeqParameterSets[(int) seqParameterSetID]) == null)
+            if (seqParameterSetID >= SeqParameterSets.Count || (seqParameterSetItem = SeqParameterSets[(int)seqParameterSetID]) == null)
             {
-                buffer.BSSkipBits((int) (payloadSize*8));
+                buffer.BSSkipBits((int)(payloadSize * 8), true);
                 return;
             }
-            bool subPicHRDParamsPresentFlag = false; //Default
+            bool subPicHRDParamsPresentFlag = false; // Default
             bool irapCPBParamsPresentFlag = seqParameterSetItem.VUIParameters?.XXLCommon?.SubPicHRDParamsPresentFlag ?? false;
             if (!subPicHRDParamsPresentFlag)
-                irapCPBParamsPresentFlag = buffer.ReadBool();
-            byte auCPBRemovalDelayLengthMinus1 = (byte) (seqParameterSetItem.VUIParameters?.XXLCommon?.AUCPBRemovalDelayLengthMinus1 ?? 23);
+                irapCPBParamsPresentFlag = buffer.ReadBool(true);
+            byte auCPBRemovalDelayLengthMinus1 = (byte)(seqParameterSetItem.VUIParameters?.XXLCommon?.AUCPBRemovalDelayLengthMinus1 ?? 23);
             byte dpbOutputDelayLengthMinus1 = (byte)(seqParameterSetItem.VUIParameters?.XXLCommon?.DPBOutputDelayLengthMinus1 ?? 23);
             if (irapCPBParamsPresentFlag)
             {
-                buffer.BSSkipBits(auCPBRemovalDelayLengthMinus1 + dpbOutputDelayLengthMinus1 + 2);
+                buffer.BSSkipBits(auCPBRemovalDelayLengthMinus1 + dpbOutputDelayLengthMinus1 + 2, true);
             }
-            buffer.BSSkipBits(auCPBRemovalDelayLengthMinus1 + 2); //concatenation_flag, au_cpb_removal_delay_delta_minus1
+            buffer.BSSkipBits(auCPBRemovalDelayLengthMinus1 + 2, true); // concatenation_flag, au_cpb_removal_delay_delta_minus1
             if (seqParameterSetItem.NalHrdBpPresentFlag)
                 SeiMessageBufferingPeriodXXL(buffer, seqParameterSetItem.VUIParameters?.XXLCommon, irapCPBParamsPresentFlag, seqParameterSetItem.VUIParameters?.NAL, payloadSize);
             if (seqParameterSetItem.VclHrdPbPresentFlag)
@@ -991,17 +1154,17 @@ namespace BDInfo
         {
             if (xxlCommon == null || xxl == null)
             {
-                buffer.BSSkipBits((int) (payloadSize*8));
+                buffer.BSSkipBits((int)(payloadSize * 8), true);
                 return;
             }
             for (int schedSelIdx = 0; schedSelIdx < xxl.SchedSel.Count; schedSelIdx++)
             {
-                buffer.BSSkipBits(xxlCommon.InitialCPBRemovalDelayLengthMinus1 + 1); //initial_cpb_removal_delay
-                buffer.BSSkipBits(xxlCommon.InitialCPBRemovalDelayLengthMinus1 + 1); //initial_cpb_removal_delay_offset
+                buffer.BSSkipBits(xxlCommon.InitialCPBRemovalDelayLengthMinus1 + 1, true); // initial_cpb_removal_delay
+                buffer.BSSkipBits(xxlCommon.InitialCPBRemovalDelayLengthMinus1 + 1, true); // initial_cpb_removal_delay_offset
                 if (xxlCommon.SubPicHRDParamsPresentFlag || irapCPBParamsPresentFlag)
                 {
-                    buffer.BSSkipBits(xxlCommon.InitialCPBRemovalDelayLengthMinus1 + 1); //initial_alt_cpb_removal_delay
-                    buffer.BSSkipBits(xxlCommon.InitialCPBRemovalDelayLengthMinus1 + 1); //initial_alt_cpb_removal_delay_offset
+                    buffer.BSSkipBits(xxlCommon.InitialCPBRemovalDelayLengthMinus1 + 1, true); // initial_alt_cpb_removal_delay
+                    buffer.BSSkipBits(xxlCommon.InitialCPBRemovalDelayLengthMinus1 + 1, true); // initial_alt_cpb_removal_delay_offset
                 }
             }
         }
@@ -1012,27 +1175,27 @@ namespace BDInfo
             if (seqParameterSetID == uint.MaxValue && SeqParameterSets.Count == 1)
                 seqParameterSetID = 0;
             SeqParameterSetStruct seqParameterSetItem;
-            if (seqParameterSetID >= SeqParameterSets.Count || (seqParameterSetItem = SeqParameterSets[(int) seqParameterSetID]) == null)
+            if (seqParameterSetID >= SeqParameterSets.Count || (seqParameterSetItem = SeqParameterSets[(int)seqParameterSetID]) == null)
             {
-                buffer.BSSkipBits((int) (payloadSize*8));
+                buffer.BSSkipBits((int)(payloadSize * 8), true);
                 return;
             }
 
             if (seqParameterSetItem.VUIParameters?.FrameFieldInfoPresentFlag ??
                 (seqParameterSetItem.GeneralProgressiveSourceFlag && seqParameterSetItem.GeneralInterlacedSourceFlag))
             {
-                buffer.BSSkipBits(7); //pic_struct, source_scan_type, duplicate_flag
+                buffer.BSSkipBits(7, true); // pic_struct, source_scan_type, duplicate_flag
             }
             if (seqParameterSetItem.CpbDpbDelaysPresentFlag)
             {
-                byte auCPBRemovalDelayLengthMinus1 = (byte) seqParameterSetItem.VUIParameters.XXLCommon.AUCPBRemovalDelayLengthMinus1;
-                byte dpbOutputDelayLengthMinus1 = (byte) seqParameterSetItem.VUIParameters.XXLCommon.DPBOutputDelayLengthMinus1;
+                byte auCPBRemovalDelayLengthMinus1 = (byte)seqParameterSetItem.VUIParameters.XXLCommon.AUCPBRemovalDelayLengthMinus1;
+                byte dpbOutputDelayLengthMinus1 = (byte)seqParameterSetItem.VUIParameters.XXLCommon.DPBOutputDelayLengthMinus1;
                 bool subPicHRDParamsPresentFlag = seqParameterSetItem.VUIParameters.XXLCommon.SubPicHRDParamsPresentFlag;
-                buffer.BSSkipBits(auCPBRemovalDelayLengthMinus1 + dpbOutputDelayLengthMinus1 + 2);
+                buffer.BSSkipBits(auCPBRemovalDelayLengthMinus1 + dpbOutputDelayLengthMinus1 + 2, true);
                 if (subPicHRDParamsPresentFlag)
                 {
-                    byte dpbOutputDelayDULengthMinus1 = (byte) seqParameterSetItem.VUIParameters.XXLCommon.DPBOutputDelayDULengthMinus1;
-                    buffer.BSSkipBits(dpbOutputDelayDULengthMinus1 + 1);
+                    byte dpbOutputDelayDULengthMinus1 = (byte)seqParameterSetItem.VUIParameters.XXLCommon.DPBOutputDelayDULengthMinus1;
+                    buffer.BSSkipBits(dpbOutputDelayDULengthMinus1 + 1, true);
                 }
             }
         }
@@ -1040,119 +1203,123 @@ namespace BDInfo
         // SEI - 6
         private static void SeiMessageRecoveryPoint(TSStreamBuffer buffer)
         {
-            buffer.SkipExp(); //recovery_poc_cnt
-            buffer.BSSkipBits(2); //exact_match_flag, broken_link_flag
+            buffer.SkipExp(true); // recovery_poc_cnt
+            buffer.BSSkipBits(2, true); // exact_match_flag, broken_link_flag
         }
 
         // SEI - 129
         private static void SeiMessageActiveParametersSets(TSStreamBuffer buffer)
         {
-            buffer.BSSkipBits(6);
-            var numSpsIdsMinus1 = buffer.ReadExp();
-            buffer.SkipExpMulti((int) (numSpsIdsMinus1 + 1));
+            buffer.BSSkipBits(6, true);
+            var numSpsIdsMinus1 = buffer.ReadExp(true);
+            buffer.SkipExpMulti((int)(numSpsIdsMinus1 + 1), true);
         }
 
         // SEI - 137
         private static void SeiMessageMasteringDisplayColourVolume(TSStreamBuffer buffer)
         {
-            uint max, min;
-            ushort[] x = new ushort[4];
-            ushort[] y = new ushort[4];
-
+            // TODO: Color Reading sometimes off.
+            MasteringMetadata2086 Meta = new MasteringMetadata2086();
+            buffer.BSResetBits();
             for (int i = 0; i < 3; i++)
             {
-                x[i] = buffer.ReadBits2(16);
-                y[i] = buffer.ReadBits2(16);
+                Meta.Primaries[i * 2] = buffer.ReadBits2(16, true); // x
+                Meta.Primaries[(i * 2) + 1] = buffer.ReadBits2(16, true); // y
             }
-            x[3] = buffer.ReadBits2(16);
-            y[3] = buffer.ReadBits2(16);
+            Meta.Primaries[3 * 2] = buffer.ReadBits2(16, true);
+            Meta.Primaries[(3 * 2) + 1] = buffer.ReadBits2(16, true);
 
+            Meta.Luminance[1] = buffer.ReadBits4(32, true);
+            Meta.Luminance[0] = buffer.ReadBits4(32, true);
 
-            max = buffer.ReadBits4(32);
-
-            // TODO: Doublecheck workaround
-            min = buffer.ReadBits4(32) & 0xFFFFFCFF;
-            if (min == 0)
+            // Reordering to RGB
+            int R = 4, G = 4, B = 4;
+            for (int c = 0; c < 3; c++)
             {
-                buffer.BSSkipBytes(-3);
-                min = buffer.ReadBits4(32) & 0xFFFCFFFF;
-            }
-            else
-            {
-                buffer.BSSkipBytes(-4);
-                min = buffer.ReadBits4(32);
-                if (min > 1000)
-                    min = min & 0xFFFCFFFF;
-            }
-
-            //Reordering to RGB
-            byte R = 4, G = 4, B = 4;
-            for (byte c = 0; c < 3; c++)
-            {
-                if (x[c] < 17500 && y[c] < 17500)
+                if (Meta.Primaries[c * 2] < 17500 && Meta.Primaries[(c * 2) + 1] < 17500)
                     B = c;
-                else if (y[c] - x[c] >= 0)
+                else if (Meta.Primaries[(c * 2) + 1] - Meta.Primaries[c * 2] >= 0)
                     G = c;
                 else
                     R = c;
             }
             if ((R | B | G) >= 4)
             {
-                //Order not automaticly detected, betting on GBR order
+                // Order not automaticaly detected, betting on GBR order
                 G = 0;
                 B = 1;
                 R = 2;
             }
 
+            bool notValid = false;
+
+            for (int c = 0; c < 8; c++)
+            {
+                if (Meta.Primaries[c] == ushort.MaxValue)
+                    notValid = true;
+            }
+
             MasteringDisplayColorPrimaries = string.Empty;
             bool humanReadablePrimaries = false;
-            if (x[G] == 15000 && x[B] == 7500 && x[R] == 32000 && x[3] == 15635 &&
-                y[G] == 30000 && y[B] == 3000 && y[R] == 16500 && y[3] == 16450)
+
+            if (!notValid)
             {
-                MasteringDisplayColorPrimaries = "BT.709";
-                humanReadablePrimaries = true;
-            }
-            else if (x[G] == 8500 && x[B] == 6550 && x[R] == 35400 && x[3] == 15635 &&
-                     y[G] == 39850 && y[B] == 2300 && y[R] == 14600 && y[3] == 16450)
-            {
-                MasteringDisplayColorPrimaries = "BT.2020";
-                humanReadablePrimaries = true;
-            }
-            else if (x[G] == 13250 && x[B] == 7500 && x[R] == 34000 && x[3] == 15635 &&
-                     y[G] == 34500 && y[B] == 3000 && y[R] == 16000 && y[3] == 16450)
-            {
-                MasteringDisplayColorPrimaries = "Display P3";
-                humanReadablePrimaries = true;
+                for (int i = 0; i < MasteringDisplayColorVolumeValues.Length; i++)
+                {
+                    byte code = MasteringDisplayColorVolumeValues[i].Code;
+                    for (int j = 0; j < 2; j++)
+                    {
+                        // +/- 0.0005 (3 digits after comma)
+                        if (Meta.Primaries[G * 2 + j] < MasteringDisplayColorVolumeValues[i].Values[0 * 2 + j] - 25 || (Meta.Primaries[G * 2 + j] >= MasteringDisplayColorVolumeValues[i].Values[0 * 2 + j] + 25))
+                            code = 0;
+                        if (Meta.Primaries[B * 2 + j] < MasteringDisplayColorVolumeValues[i].Values[1 * 2 + j] - 25 || (Meta.Primaries[B * 2 + j] >= MasteringDisplayColorVolumeValues[i].Values[1 * 2 + j] + 25))
+                            code = 0;
+                        if (Meta.Primaries[R * 2 + j] < MasteringDisplayColorVolumeValues[i].Values[2 * 2 + j] - 25 || (Meta.Primaries[R * 2 + j] >= MasteringDisplayColorVolumeValues[i].Values[2 * 2 + j] + 25))
+                            code = 0;
+                        // +/- 0.00005 (4 digits after comma)
+                        if (Meta.Primaries[3 * 2 + j] < MasteringDisplayColorVolumeValues[i].Values[3 * 2 + j] - 2 || (Meta.Primaries[3 * 2 + j] >= MasteringDisplayColorVolumeValues[i].Values[3 * 2 + j] + 3))
+                            code = 0;
+                    }
+                    if (code > 0)
+                    {
+                        MasteringDisplayColorPrimaries = ColourPrimaries(code);
+                        humanReadablePrimaries = true;
+                        break;
+                    }
+                }
             }
 
             if (!humanReadablePrimaries)
+            {
                 MasteringDisplayColorPrimaries += string.Format(CultureInfo.InvariantCulture,
                                                            "R: x={0:0.000000} y={1:0.000000}, G: x={2:0.000000} y={3:0.000000}" +
                                                            ", B: x={4:0.000000} y={5:0.000000}, White point: x={6:0.000000} y={7:0.000000}",
-                                                           (double)x[R] / 50000, (double)y[R] / 50000,
-                                                           (double)x[G] / 50000, (double)y[G] / 50000,
-                                                           (double)x[B] / 50000, (double)y[B] / 50000,
-                                                           (double)x[3] / 50000, (double)y[3] / 50000);
+                                                               (double)Meta.Primaries[R * 2] / 50000, (double)Meta.Primaries[(R * 2) + 1] / 50000,
+                                                               (double)Meta.Primaries[G * 2] / 50000, (double)Meta.Primaries[(G * 2) + 1] / 50000,
+                                                               (double)Meta.Primaries[B * 2] / 50000, (double)Meta.Primaries[(B * 2) + 1] / 50000,
+                                                               (double)Meta.Primaries[3 * 2] / 50000, (double)Meta.Primaries[(3 * 2) + 1] / 50000);
+            }
+
 
             MasteringDisplayLuminance = string.Format(CultureInfo.InvariantCulture,
                                                       "min: {0:0.0000} cd/m2, max: " +
-                                                      ((max - ((int) max) == 0) ? "{1:0}" : "{1:0.0000}") +
+                                                      ((Meta.Luminance[1] - ((int)Meta.Luminance[1]) == 0) ? "{1:0}" : "{1:0.0000}") +
                                                       " cd/m2",
-                                                      (double) min / 10000, (double) max / 10000);
+                                                      (double)Meta.Luminance[0] / 10000, (double)Meta.Luminance[1] / 10000);
         }
 
         // SEI - 144
         private static void SeiMessageLightLevel(TSStreamBuffer buffer)
         {
-            MaximumContentLightLevel = buffer.ReadBits2(16);
-            MaximumFrameAverageLightLevel = buffer.ReadBits2(16);
+            MaximumContentLightLevel = buffer.ReadBits2(16, true);
+            MaximumFrameAverageLightLevel = buffer.ReadBits2(16, true);
             LightLevelAvailable = true;
         }
 
         // SEI - 147
         private static void SeiAlternativeTransferCharacteristics(TSStreamBuffer buffer)
         {
-            PreferredTransferCharacteristics = (byte) buffer.ReadBits2(8);
+            PreferredTransferCharacteristics = (byte)buffer.ReadBits2(8, true);
         }
 
         private static void VUIParameters(TSStreamBuffer buffer, VideoParamSetStruct videoParamSetItem, ref VUIParametersStruct vuiParametersItem)
@@ -1165,60 +1332,60 @@ namespace BDInfo
             byte aspectRatioIDC = 0, videoFormat = 5, videoFullRangeFlag = 0, colourPrimaries = 2, transferCharacteristics = 2, matrixCoefficients = 2;
             bool colourDescriptionPresentFlag = false;
 
-            var aspectRatioInfoPresentFlag = buffer.ReadBool();
+            var aspectRatioInfoPresentFlag = buffer.ReadBool(true);
             if (aspectRatioInfoPresentFlag)
             {
-                aspectRatioIDC = (byte) buffer.ReadBits2(8);
+                aspectRatioIDC = (byte)buffer.ReadBits2(8, true);
                 if (aspectRatioIDC == 0xFF)
                 {
-                    sarWidth = (ushort) buffer.ReadBits4(16);
-                    sarHeight = (ushort) buffer.ReadBits4(16);
+                    sarWidth = (ushort)buffer.ReadBits4(16, true);
+                    sarHeight = (ushort)buffer.ReadBits4(16, true);
                 }
             }
-            if (buffer.ReadBool()) //overscan_info_present_flag
-                buffer.BSSkipBits(1);
-            var videoSignalTypePresentFlag = buffer.ReadBool();
+            if (buffer.ReadBool(true)) // overscan_info_present_flag
+                buffer.BSSkipBits(1, true);
+            var videoSignalTypePresentFlag = buffer.ReadBool(true);
             if (videoSignalTypePresentFlag)
             {
-                videoFormat = (byte) buffer.ReadBits2(3);
-                videoFullRangeFlag = (byte) buffer.ReadBits2(1);
-                colourDescriptionPresentFlag = buffer.ReadBool();
+                videoFormat = (byte)buffer.ReadBits2(3, true);
+                videoFullRangeFlag = (byte)buffer.ReadBits2(1, true);
+                colourDescriptionPresentFlag = buffer.ReadBool(true);
                 if (colourDescriptionPresentFlag)
                 {
-                    colourPrimaries = (byte) buffer.ReadBits2(8);
-                    transferCharacteristics = (byte) buffer.ReadBits2(8);
-                    matrixCoefficients = (byte) buffer.ReadBits2(8);
+                    colourPrimaries = (byte)buffer.ReadBits2(8, true);
+                    transferCharacteristics = (byte)buffer.ReadBits2(8, true);
+                    matrixCoefficients = (byte)buffer.ReadBits2(8, true);
                 }
             }
-            if (buffer.ReadBool()) //chroma_loc_info_present_flag
+            if (buffer.ReadBool(true)) // chroma_loc_info_present_flag
             {
-                _chromaSampleLocTypeTopField = buffer.ReadExp();
-                _chromaSampleLocTypeBottomField = buffer.ReadExp();
+                _chromaSampleLocTypeTopField = buffer.ReadExp(true);
+                _chromaSampleLocTypeBottomField = buffer.ReadExp(true);
             }
-            buffer.BSSkipBits(2);
-            var frameFieldInfoPresentFlag = buffer.ReadBool();
-            if (buffer.ReadBool()) //default_display_window_flag
+            buffer.BSSkipBits(2, true);
+            var frameFieldInfoPresentFlag = buffer.ReadBool(true);
+            if (buffer.ReadBool(true)) // default_display_window_flag
             {
-                buffer.SkipExpMulti(4);
+                buffer.SkipExpMulti(4, true);
             }
-            var timingInfoPresentFlag = buffer.ReadBool();
+            var timingInfoPresentFlag = buffer.ReadBool(true);
             if (timingInfoPresentFlag)
             {
-                numUnitsInTick = (uint) buffer.ReadBits8(32);
-                timeScale = (uint) buffer.ReadBits8(32);
-                if (buffer.ReadBool()) //vui_poc_proportional_to_timing_flag
+                numUnitsInTick = (uint)buffer.ReadBits8(32, true);
+                timeScale = (uint)buffer.ReadBits8(32, true);
+                if (buffer.ReadBool(true)) // vui_poc_proportional_to_timing_flag
                 {
-                    buffer.SkipExp();
+                    buffer.SkipExp(true);
                 }
-                if (buffer.ReadBool()) //hrd_parameters_present_flag
+                if (buffer.ReadBool(true)) // hrd_parameters_present_flag
                 {
                     HRDParameters(buffer, true, videoParamSetItem.VPSMaxSubLayers, ref xxlCommon, ref nal, ref vcl);
                 }
             }
-            if (buffer.ReadBool()) //bitstream_restriction_flag
+            if (buffer.ReadBool(true)) // bitstream_restriction_flag
             {
-                buffer.BSSkipBits(3);
-                buffer.SkipExpMulti(5);
+                buffer.BSSkipBits(3, true);
+                buffer.SkipExpMulti(5, true);
             }
 
             vuiParametersItem = new VUIParametersStruct(nal, vcl, xxlCommon, numUnitsInTick, timeScale, sarWidth, sarHeight, aspectRatioIDC, videoFormat,
@@ -1233,29 +1400,29 @@ namespace BDInfo
             {
                 bool interRefPicSetPredictionFlag = false;
                 if (stRpsIdx > 0)
-                    interRefPicSetPredictionFlag = buffer.ReadBool();
+                    interRefPicSetPredictionFlag = buffer.ReadBool(true);
 
                 if (interRefPicSetPredictionFlag)
                 {
                     uint deltaIdxMinus1 = 0;
                     if (stRpsIdx == numShortTermRefPicSets)
-                        deltaIdxMinus1 = buffer.ReadExp();
+                        deltaIdxMinus1 = buffer.ReadExp(true);
                     if (deltaIdxMinus1 + 1 > stRpsIdx)
                     {
                         return;
                     }
 
-                    buffer.BSSkipBits(1);
-                    buffer.SkipExp();
+                    buffer.BSSkipBits(1, true);
+                    buffer.SkipExp(true);
 
                     uint numPicsNew = 0;
                     for (uint picPos = 0; picPos <= numPics; picPos++)
                     {
-                        if (buffer.ReadBool()) //used_by_curr_pic_flag
+                        if (buffer.ReadBool(true)) // used_by_curr_pic_flag
                             numPicsNew++;
                         else
                         {
-                            if (buffer.ReadBool()) //use_delta_flag
+                            if (buffer.ReadBool(true)) // use_delta_flag
                                 numPicsNew++;
                         }
                     }
@@ -1263,18 +1430,18 @@ namespace BDInfo
                 }
                 else
                 {
-                    var numNegativePics = buffer.ReadExp();
-                    var numPositivePics = buffer.ReadExp();
+                    var numNegativePics = buffer.ReadExp(true);
+                    var numPositivePics = buffer.ReadExp(true);
                     numPics = numNegativePics + numPositivePics;
                     for (int i = 0; i < numNegativePics; i++)
                     {
-                        buffer.SkipExp();
-                        buffer.BSSkipBits(1);
+                        buffer.SkipExp(true);
+                        buffer.BSSkipBits(1, true);
                     }
                     for (int i = 0; i < numPositivePics; i++)
                     {
-                        buffer.SkipExp();
-                        buffer.BSSkipBits(1);
+                        buffer.SkipExp(true);
+                        buffer.BSSkipBits(1, true);
                     }
                 }
             }
@@ -1286,15 +1453,15 @@ namespace BDInfo
             {
                 for (var matrixId = 0; matrixId < ((sizeId == 3) ? 2 : 6); matrixId++)
                 {
-                    if (!buffer.ReadBool()) // scaling_list_pred_mode_flag
-                        buffer.SkipExp();
+                    if (!buffer.ReadBool(true)) // scaling_list_pred_mode_flag
+                        buffer.SkipExp(true);
                     else
                     {
-                        int coefNum = Math.Min(64, (1 << (4 + (sizeId << 1))));
+                        int coefNum = Math.Min(64, 1 << (4 + (sizeId << 1)));
                         if (sizeId > 1)
-                            buffer.SkipExp();
+                            buffer.SkipExp(true);
                         for (int i = 0; i < coefNum; i++)
-                            buffer.SkipExp();
+                            buffer.SkipExp(true);
                     }
                 }
             }
@@ -1302,31 +1469,28 @@ namespace BDInfo
 
         private static void ProfileTierLevel(TSStreamBuffer buffer, uint subLayerCount)
         {
-            _profileSpace = buffer.ReadBits2(2);
-            _tierFlag = buffer.ReadBool();
-            _profileIDC = buffer.ReadBits2(5);
+            _profileSpace = buffer.ReadBits2(2, true);
+            _tierFlag = buffer.ReadBool(true);
+            _profileIDC = buffer.ReadBits2(5, true);
 
-            buffer.BSSkipBits(32); // general_profile_compatibility_flags
-            buffer.BSSkipBytes(1); // TODO: doublecheck workaround
+            buffer.BSSkipBits(32, true); // general_profile_compatibility_flags
 
-            _generalProgressiveSourceFlag = buffer.ReadBool();
-            _generalInterlacedSourceFlag = buffer.ReadBool();
-            buffer.BSSkipBits(1); // general_non_packed_constraint_flag
-            _generalFrameOnlyConstraintFlag = buffer.ReadBool();
+            _generalProgressiveSourceFlag = buffer.ReadBool(true);
+            _generalInterlacedSourceFlag = buffer.ReadBool(true);
+            buffer.BSSkipBits(1, true); // general_non_packed_constraint_flag
+            _generalFrameOnlyConstraintFlag = buffer.ReadBool(true);
 
-            buffer.BSSkipBits(44); // general_reserved_zero_44bits
+            buffer.BSSkipBits(44, true); // general_reserved_zero_44bits
 
-            buffer.BSSkipBytes(2); // TODO: doublecheck workaround
-
-            _levelIDC = buffer.ReadBits2(8);
+            _levelIDC = buffer.ReadBits2(8, true);
 
             var subLayerProfilePresentFlags = new List<bool>();
             var subLayerLevelPresentFlags = new List<bool>();
 
             for (var subLayerPos = 0; subLayerPos < subLayerCount; subLayerPos++)
             {
-                var subLayerProfilePresentFlag = buffer.ReadBool();
-                var subLayerLevelPresentFlag = buffer.ReadBool();
+                var subLayerProfilePresentFlag = buffer.ReadBool(true);
+                var subLayerLevelPresentFlag = buffer.ReadBool(true);
 
                 subLayerProfilePresentFlags.Add(subLayerProfilePresentFlag);
                 subLayerLevelPresentFlags.Add(subLayerLevelPresentFlag);
@@ -1334,18 +1498,18 @@ namespace BDInfo
 
             if (subLayerCount > 0)
             {
-                buffer.BSSkipBits(2); //reserved_zero_2bits
+                buffer.BSSkipBits(2, true); //reserved_zero_2bits
             }
 
             for (var subLayerPos = 0; subLayerPos < subLayerCount; subLayerPos++)
             {
                 if (subLayerProfilePresentFlags[subLayerPos])
                 {
-                    buffer.BSSkipBits(88); // sub layer profile data
+                    buffer.BSSkipBits(88, true); // sub layer profile data
                 }
                 if (subLayerLevelPresentFlags[subLayerPos])
                 {
-                    buffer.BSSkipBits(8); //sub_layer_level_idc
+                    buffer.BSSkipBits(8, true); //sub_layer_level_idc
                 }
             }
         }
@@ -1361,25 +1525,25 @@ namespace BDInfo
 
             if (commonInfPresentFlag)
             {
-                nalHRDParametersPresentFlag = buffer.ReadBool();
-                vclHRDParametersPresentFlag = buffer.ReadBool();
+                nalHRDParametersPresentFlag = buffer.ReadBool(true);
+                vclHRDParametersPresentFlag = buffer.ReadBool(true);
                 if (nalHRDParametersPresentFlag || vclHRDParametersPresentFlag)
                 {
-                    subPicHRDParamsPresentFlag = buffer.ReadBool();
+                    subPicHRDParamsPresentFlag = buffer.ReadBool(true);
                     if (subPicHRDParamsPresentFlag)
                     {
-                        buffer.BSSkipBits(8); //tick_divisor_minus2
-                        duCPBRemovalDelayIncrementLengthMinus1 = (byte)buffer.ReadBits2(5);
-                        buffer.BSSkipBits(1); //sub_pic_cpb_params_in_pic_timing_sei_flag
-                        dpbOutputDelayDULengthMinus1 = (byte)buffer.ReadBits2(5);
+                        buffer.BSSkipBits(8, true); //tick_divisor_minus2
+                        duCPBRemovalDelayIncrementLengthMinus1 = (byte)buffer.ReadBits2(5, true);
+                        buffer.BSSkipBits(1, true); //sub_pic_cpb_params_in_pic_timing_sei_flag
+                        dpbOutputDelayDULengthMinus1 = (byte)buffer.ReadBits2(5, true);
                     }
-                    bitRateScale = (byte)buffer.ReadBits2(4);
-                    cpbSizeScale = (byte)buffer.ReadBits2(4);
+                    bitRateScale = (byte)buffer.ReadBits2(4, true);
+                    cpbSizeScale = (byte)buffer.ReadBits2(4, true);
                     if (subPicHRDParamsPresentFlag)
-                        buffer.BSSkipBits(4); //cpb_size_du_scale
-                    initialCPBRemovalDelayLengthMinus1 = (byte)buffer.ReadBits2(5);
-                    auCPBRemovalDelayLengthMinus1 = (byte)buffer.ReadBits2(5);
-                    dpbOutputDelayLengthMinus1 = (byte)buffer.ReadBits2(5);
+                        buffer.BSSkipBits(4, true); //cpb_size_du_scale
+                    initialCPBRemovalDelayLengthMinus1 = (byte)buffer.ReadBits2(5, true);
+                    auCPBRemovalDelayLengthMinus1 = (byte)buffer.ReadBits2(5, true);
+                    dpbOutputDelayLengthMinus1 = (byte)buffer.ReadBits2(5, true);
                 }
             }
 
@@ -1387,16 +1551,16 @@ namespace BDInfo
             {
                 uint cpbCntMinus1 = 0;
                 bool fixedPicRateWithinCvsFlag = true, lowDelayHRDFlag = false;
-                var fixedPicRateGeneralFlag = buffer.ReadBool();
+                var fixedPicRateGeneralFlag = buffer.ReadBool(true);
                 if (!fixedPicRateGeneralFlag)
-                    fixedPicRateWithinCvsFlag = buffer.ReadBool();
+                    fixedPicRateWithinCvsFlag = buffer.ReadBool(true);
                 if (fixedPicRateWithinCvsFlag)
-                    buffer.SkipExp(); //elemental_duration_in_tc_minus1
+                    buffer.SkipExp(true); //elemental_duration_in_tc_minus1
                 else
-                    lowDelayHRDFlag = buffer.ReadBool();
+                    lowDelayHRDFlag = buffer.ReadBool(true);
                 if (!lowDelayHRDFlag)
                 {
-                    cpbCntMinus1 = buffer.ReadExp();
+                    cpbCntMinus1 = buffer.ReadExp(true);
                     if (cpbCntMinus1 > 31)
                     {
                         return;
@@ -1427,15 +1591,15 @@ namespace BDInfo
             List<XXLData> schedSel = new List<XXLData>((int)cpbCntMinus1 + 1);
             for (byte schedSelIdx = 0; schedSelIdx <= cpbCntMinus1; ++schedSelIdx)
             {
-                var bitRateValueMinus1 = buffer.ReadExp();
+                var bitRateValueMinus1 = buffer.ReadExp(true);
                 var bitRateValue = (ulong)((bitRateValueMinus1 + 1) * Math.Pow(2.0, 6 + bitRateScale));
-                var cpbSizeValueMinus1 = buffer.ReadExp();
+                var cpbSizeValueMinus1 = buffer.ReadExp(true);
                 var cpbSizeValue = (ulong)((cpbSizeValueMinus1 + 1) * Math.Pow(2.0, 4 + cpbSizeScale));
                 if (xxlCommon.SubPicHRDParamsPresentFlag)
                 {
-                    buffer.SkipExpMulti(2); //cpb_size_du_value_minus1, bit_rate_du_value_minus1
+                    buffer.SkipExpMulti(2, true); // cpb_size_du_value_minus1, bit_rate_du_value_minus1
                 }
-                var cbrFlag = buffer.ReadBool();
+                var cbrFlag = buffer.ReadBool(true);
                 schedSel.Add(new XXLData(bitRateValue, cpbSizeValue, cbrFlag));
             }
 

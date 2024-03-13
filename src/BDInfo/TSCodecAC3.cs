@@ -205,12 +205,12 @@ namespace BDInfo
                         buffer.BSSkipBits(8);
                     }
                 }
-                if (frameType == 1) //dependent stream
+                if (frameType == 1) // Dependent Stream
                 {
                     stream.CoreStream = (TSAudioStream)stream.Clone();
                     stream.CoreStream.StreamType = TSStreamType.AC3_AUDIO;
 
-                    if (buffer.ReadBool()) //channel remapping
+                    if (buffer.ReadBool()) // channel_remapping
                     {
                         uint chanmap = buffer.ReadBits4(16);
 
@@ -224,52 +224,52 @@ namespace BDInfo
 
                 do
                 {
-                    uint emdfSync = (buffer.ReadBits4(16));
-                    if ((emdfSync) == 0x5838)
+                    uint emdfSync = buffer.ReadBits4(16);
+                    if (emdfSync == 0x5838)
                     {
                         emdfFound = true;
                         break;
                     }
                     buffer.Seek(-2, SeekOrigin.Current);
-                    buffer.BSSkipBits(1); // skip 1 bit
+                    buffer.BSSkipBits(1); // Skip 1 bit
                 } while (buffer.Position < buffer.Length);
 
                 if (emdfFound)
                 {
                     uint emdfContainerSize = buffer.ReadBits4(16);
-                    var remainAfterEmdf = buffer.DataBitStreamRemain() - emdfContainerSize*8;
+                    var remainAfterEmdf = buffer.DataBitStreamRemain() - emdfContainerSize * 8;
 
-                    uint emdfVersion = buffer.ReadBits2(2); //emdf_version
+                    uint emdfVersion = buffer.ReadBits2(2); // emdf_version
                     if (emdfVersion == 3)
                         emdfVersion += buffer.ReadBits2(2);
 
                     if (emdfVersion > 0)
                     {
-                        buffer.BSSkipBits((int) (buffer.DataBitStreamRemain() - remainAfterEmdf));
+                        buffer.BSSkipBits((int)(buffer.DataBitStreamRemain() - remainAfterEmdf));
                     }
                     else
                     {
                         var temp = buffer.ReadBits2(3);
                         if (temp == 0x7)
-                            buffer.BSSkipBits(2); //skip 3 bits
+                            buffer.BSSkipBits(2); // Skip 3 bits
 
                         var emdfPayloadID = buffer.ReadBits2(5);
 
                         if (emdfPayloadID > 0 && emdfPayloadID < 16)
                         {
                             if (emdfPayloadID == 0x1F)
-                                buffer.BSSkipBits(5); //skip 5 bits
+                                buffer.BSSkipBits(5); // Skip 5 bits
 
                             EmdfPayloadConfig(buffer);
 
-                            int emdfPayloadSize = buffer.ReadBits2(8)*8;
+                            int emdfPayloadSize = buffer.ReadBits2(8) * 8;
                             buffer.BSSkipBits(emdfPayloadSize + 1);
                         }
 
                         while ((emdfPayloadID = buffer.ReadBits2(5)) != 14 && buffer.Position < buffer.Length)
                         {
                             if (emdfPayloadID == 0x1F)
-                                buffer.BSSkipBits(5); //skip 5 bits
+                                buffer.BSSkipBits(5); // Skip 5 bits
 
                             EmdfPayloadConfig(buffer);
 
@@ -366,22 +366,22 @@ namespace BDInfo
             if (sampleOffsetE)
                 buffer.BSSkipBits(12);
 
-            if (buffer.ReadBool()) //duratione
-                buffer.BSSkipBits(11); //duration
+            if (buffer.ReadBool()) // duratione
+                buffer.BSSkipBits(11); // duration
 
-            if (buffer.ReadBool()) //groupide
-                buffer.BSSkipBits(2); //groupid
+            if (buffer.ReadBool()) // groupide
+                buffer.BSSkipBits(2); // groupid
 
             if (buffer.ReadBool())
-                buffer.BSSkipBits(8); // reserved
+                buffer.BSSkipBits(8); // Reserved
 
-            if (!buffer.ReadBool()) //discard_unknown_payload
+            if (!buffer.ReadBool()) // discard_unknown_payload
             {
                 buffer.BSSkipBits(1);
 
                 if (!sampleOffsetE)
                 {
-                    if (buffer.ReadBool()) //payload_frame_aligned
+                    if (buffer.ReadBool()) // payload_frame_aligned
                         buffer.BSSkipBits(9);
                 }
             }

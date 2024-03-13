@@ -234,17 +234,26 @@ namespace BDInfo
 
         private void ReadDiscTitle(StreamReader fileStream)
         {
-            XmlDocument xDoc = new XmlDocument();
-            xDoc.Load(fileStream);
-            var xNsMgr = new XmlNamespaceManager(xDoc.NameTable);
-            xNsMgr.AddNamespace("di", "urn:BDA:bdmv;discinfo");
-            var xNode = xDoc.DocumentElement?.SelectSingleNode("di:discinfo/di:title/di:name", xNsMgr);
-            DiscTitle = xNode?.InnerText;
+            try
+            {
+                XmlDocument xDoc = new XmlDocument();
+                xDoc.Load(fileStream);
+                var xNsMgr = new XmlNamespaceManager(xDoc.NameTable);
+                xNsMgr.AddNamespace("di", "urn:BDA:bdmv;discinfo");
+                var xNode = xDoc.DocumentElement?.SelectSingleNode("di:discinfo/di:title/di:name", xNsMgr);
+                DiscTitle = xNode?.InnerText;
 
-            if (!string.IsNullOrEmpty(DiscTitle) && DiscTitle.ToLowerInvariant() == "blu-ray")
+                if (!string.IsNullOrEmpty(DiscTitle) && DiscTitle.ToLowerInvariant() == "blu-ray")
+                    DiscTitle = null;
+            }
+            catch (Exception)
+            {
                 DiscTitle = null;
-
-            fileStream.Close();
+            }
+            finally
+            {
+                fileStream.Close();
+            }
         }
 
         public void Scan()
@@ -456,7 +465,7 @@ namespace BDInfo
             try
             {
                 long result = GetVolumeInformation(
-                    dir.Name,
+                    dir.FullName,
                     volumeLabel,
                     (uint)volumeLabel.Capacity,
                     ref serialNumber,
@@ -487,7 +496,7 @@ namespace BDInfo
             {
                 return 0;
             }
-            else if ((x == null || x.FileInfo == null) && (y != null && y.FileInfo != null))
+            else if ((x == null || x.FileInfo == null) && y != null && y.FileInfo != null)
             {
                 return 1;
             }
@@ -524,7 +533,7 @@ namespace BDInfo
             }
         }
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern long GetVolumeInformation(
             string PathName,
             StringBuilder VolumeNameBuffer,

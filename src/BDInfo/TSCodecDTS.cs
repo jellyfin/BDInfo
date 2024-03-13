@@ -103,10 +103,10 @@ namespace BDInfo
             uint totalChannels = buffer.ReadBits4(3) + 1 + extCoding;
 
             stream.SampleRate = DcaSampleRates[sampleRate];
-            stream.ChannelCount = (int) totalChannels;
-            stream.LFE = (lfe > 0 ? 1 : 0);
+            stream.ChannelCount = (int)totalChannels;
+            stream.LFE = lfe > 0 ? 1 : 0;
             stream.BitDepth = DcaBitsPerSample[sourcePcmRes];
-            stream.DialNorm = (int) -dialogNorm;
+            stream.DialNorm = (int)-dialogNorm;
             if ((sourcePcmRes & 0x1) == 0x1)
             {
                 stream.AudioMode = TSAudioMode.Extended;
