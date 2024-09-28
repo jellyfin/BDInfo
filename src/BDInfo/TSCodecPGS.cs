@@ -17,106 +17,100 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //=============================================================================
 
+namespace BDInfo;
 
-namespace BDInfo
+public abstract class TSCodecPGS
 {
-    public abstract class TSCodecPGS
+
+    public struct Frame
     {
+        public bool Started;
+        public bool Forced;
+        public bool Finished;
+    }
 
-        public struct Frame
+    public static void Scan(TSGraphicsStream stream, TSStreamBuffer buffer, ref string tag)
+    {
+        var segmentType = buffer.ReadByte(false);
+
+        switch (segmentType)
         {
-            public bool Started;
-            public bool Forced;
-            public bool Finished;
+            case 0x15: // ODS: Object Definition Segment
+                tag = ReadODS(stream, buffer);
+                break;
+            case 0x16: // PCS: Presentation Composition Segment
+                ReadPCS(stream, buffer);
+                break;
+            case 0x80:
+                if (!stream.LastFrame.Finished)
+                    stream.LastFrame.Finished = true;
+                break;
+            default:
+                break;
+        }
+        stream.IsVBR = true;
+    }
+
+    private static string ReadODS(TSGraphicsStream stream, TSStreamBuffer buffer)
+    {
+        var tag = string.Empty;
+        int segmentSize = buffer.ReadBits2(16, false);
+        int objectID = buffer.ReadBits2(16, false); // object ID
+
+        if (stream.LastFrame.Finished) return tag;
+
+        if (stream.LastFrame.Forced)
+        {
+            stream.ForcedCaptions++;
+            tag = "F";
+        }
+        else
+        {
+            stream.Captions++;
+            tag = "N";
         }
 
-        public static void Scan(
-            TSGraphicsStream stream,
-            TSStreamBuffer buffer,
-            ref string tag)
-        {
-            byte SegmentType = buffer.ReadByte(false);
+        return tag;
+    }
 
-            switch (SegmentType)
-            {
-                case 0x15: // ODS: Object Definition Segment
-                    tag = ReadODS(stream, buffer);
-                    break;
-                case 0x16: // PCS: Presentation Composition Segment
-                    ReadPCS(stream, buffer);
-                    break;
-                case 0x80:
-                    if (!stream.LastFrame.Finished)
-                        stream.LastFrame.Finished = true;
-                    break;
-                default:
-                    break;
-            }
-            stream.IsVBR = true;
+    private static void ReadPCS(TSGraphicsStream stream, TSStreamBuffer buffer)
+    {
+        int segmentSize = buffer.ReadBits2(16, false);
+        if (!stream.IsInitialized)
+        {
+            stream.Width = buffer.ReadBits2(16, false);
+            stream.Height = buffer.ReadBits2(16, false);
+            stream.IsInitialized = true;
+        }
+        else
+        {
+            buffer.ReadBits2(16, false);
+            buffer.ReadBits2(16, false);
         }
 
-        private static string ReadODS(TSGraphicsStream stream, TSStreamBuffer buffer)
+        buffer.ReadByte();
+        int compositionNumber = buffer.ReadBits2(16, false);
+        int compositionState = buffer.ReadByte(false);
+        buffer.ReadBits2(16, false);
+        int numCompositionObjects = buffer.ReadByte(false);
+
+        for (var i = 0; i < numCompositionObjects; i++)
         {
-            string tag = string.Empty;
-            _ = buffer.ReadBits2(16, false); // Segment Size
-            _ = buffer.ReadBits2(16, false); // Object ID
+            int objectID = buffer.ReadBits2(16, false); // object ID
+            buffer.ReadByte(false); // Window ID
+            var forced = buffer.ReadByte(false); // Object Cropped Flag
+            buffer.ReadBits2(16, false); // Object Horizontal Position
+            buffer.ReadBits2(16, false); // Object Vertical Position
+            buffer.ReadBits2(16, false); // Object Cropping Horizontal Position
+            buffer.ReadBits2(16, false); // Object Cropping Vertical Position
+            buffer.ReadBits2(16, false); // Object Cropping Width
+            buffer.ReadBits2(16, false); // Object Cropping Height Position
 
-            if (!stream.LastFrame.Finished)
+            stream.LastFrame = new Frame { Started = true, Forced = (forced & 0x40) == 0x40, Finished = false };
+
+            if (!stream.CaptionIDs.ContainsKey(compositionNumber))
             {
-                if (stream.LastFrame.Forced)
-                {
-                    stream.ForcedCaptions++;
-                    tag = "F";
-                }
-                else
-                {
-                    stream.Captions++;
-                    tag = "N";
-                }
-            }
-
-            return tag;
-        }
-
-        private static void ReadPCS(TSGraphicsStream stream, TSStreamBuffer buffer)
-        {
-            _ = buffer.ReadBits2(16, false); // Segment Size
-            if (!stream.IsInitialized)
-            {
-                stream.Width = buffer.ReadBits2(16, false);
-                stream.Height = buffer.ReadBits2(16, false);
-                stream.IsInitialized = true;
-            }
-            else
-            {
-                _ = buffer.ReadBits2(16, false);
-                _ = buffer.ReadBits2(16, false);
-            }
-
-            _ = buffer.ReadByte();
-            int compositionNumber = buffer.ReadBits2(16, false);
-            _ = buffer.ReadByte(false);  // Composition State
-            _ = buffer.ReadBits2(16, false);
-            int numCompositionObjects = buffer.ReadByte(false);
-
-            for (int i = 0; i < numCompositionObjects; i++)
-            {
-                _ = buffer.ReadBits2(16, false); // Object ID
-                _ = buffer.ReadByte(false); // Window ID
-                var forced = buffer.ReadByte(false); // Object Cropped Flag
-                _ = buffer.ReadBits2(16, false); // Object Horizontal Position
-                _ = buffer.ReadBits2(16, false); // Object Vertical Position
-                _ = buffer.ReadBits2(16, false); // Object Cropping Horizontal Position
-                _ = buffer.ReadBits2(16, false); // Object Cropping Vertical Position
-                _ = buffer.ReadBits2(16, false); // Object Cropping Width
-                _ = buffer.ReadBits2(16, false); // Object Cropping Height Position
-
-                stream.LastFrame = new Frame { Started = true, Forced = (forced & 0x40) == 0x40, Finished = false };
-
-                if (!stream.CaptionIDs.ContainsKey(compositionNumber))
-                {
-                    stream.CaptionIDs[compositionNumber] = stream.LastFrame;
-                }
+                stream.CaptionIDs[compositionNumber] = stream.LastFrame;
             }
         }
     }

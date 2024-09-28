@@ -18,38 +18,54 @@
 //=============================================================================
 
 using System;
-using System.Globalization;
+using System.IO;
+using System.IO.IsolatedStorage;
 using System.Text;
 
-namespace BDInfo
+namespace BDInfo;
+
+public class ToolBox
 {
-    public class ToolBox
+    public static string ReadString(ReadOnlySpan<byte> data, ref int pos)
     {
-        public static string FormatFileSize(double fSize)
-        {
-            if (fSize <= 0) return "0";
-            var units = new[] { "B", "KB", "MB", "GB", "TB", "PB", "EB" };
+        string val = Encoding.ASCII.GetString(data);
+        pos += data.Length;
 
-            var digitGroups = (int)(Math.Log10(fSize) / Math.Log10(1024));
-            return string.Format(CultureInfo.InvariantCulture, "{0:N2} {1}", fSize / Math.Pow(1024, digitGroups), units[digitGroups]);
+        return val;
+    }
+
+    public static string ReadString(byte[] data, int count, ref int pos)
+    {
+        var val = Encoding.ASCII.GetString(data, pos, count);
+        pos += count;
+
+        return val;
+    }
+
+    public static IsolatedStorageFileStream GetIsolatedStorageFileStream(string fileName, bool readFile)
+    {
+        var isolatedStorageFile =
+            IsolatedStorageFile.GetStore(IsolatedStorageScope.Machine | IsolatedStorageScope.Assembly, null,
+                null);
+        var isoFile = isolatedStorageFile.OpenFile(fileName, readFile ? FileMode.OpenOrCreate : FileMode.Create,
+            FileAccess.ReadWrite, FileShare.ReadWrite);
+
+        return isoFile;
+    }
+
+    public static object GetTextReaderWriter(string fileName, bool readFile)
+    {
+        if (readFile)
+        {
+            return new StreamReader(fileName, Encoding.UTF8, true,
+                new FileStreamOptions
+                    { Access = FileAccess.ReadWrite, Mode = FileMode.OpenOrCreate, Share = FileShare.ReadWrite });
         }
-
-        public static string ReadString(
-            byte[] data,
-            int count,
-            ref int pos)
+        else
         {
-            return ReadString(data.AsSpan(pos, count), ref pos);
-        }
-
-        public static string ReadString(
-            ReadOnlySpan<byte> data,
-            ref int pos)
-        {
-            string val =
-                Encoding.ASCII.GetString(data);
-            pos += data.Length;
-            return val;
+            return new StreamWriter(fileName, Encoding.UTF8,
+                new FileStreamOptions
+                    { Access = FileAccess.ReadWrite, Mode = FileMode.Create, Share = FileShare.ReadWrite });
         }
     }
 }

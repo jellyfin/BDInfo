@@ -21,17 +21,16 @@ using BDInfo.IO;
 
 // TODO: Do more interesting things here...
 
-namespace BDInfo
-{
-    public class TSInterleavedFile
-    {
-        public IFileInfo FileInfo { get; }
-        public string Name { get; }
+namespace BDInfo;
 
-        public TSInterleavedFile(IFileInfo fileInfo)
-        {
-            FileInfo = fileInfo;
-            Name = fileInfo.Name.ToUpper();
-        }
+public class TSInterleavedFile
+{
+    public IFileInfo FileInfo;
+    public string Name;
+
+    public TSInterleavedFile(IFileInfo fileInfo)
+    {
+        FileInfo = fileInfo;
+        Name = fileInfo.Name.ToUpperInvariant();
     }
 }
